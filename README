@@ -1,6 +1,6 @@
 # French Learning App
 
-This repository contains a small Flask application. It exposes a single route returning "Hello, world!" and includes starter data for French flashcards.
+This repository contains a small Flask application. It exposes a single route returning "Hello, world!" and includes starter data for French flashcards. The `/flashcards` page presents these cards in an interactive layout where you can flip each card and move back and forth through the deck.
 
 ## Flashcard Data
 
