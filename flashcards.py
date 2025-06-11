@@ -17,4 +17,9 @@ flashcards = [
     Flashcard(front="L'Ordinateur", back="Computer"),
     Flashcard(front="La Norriture", back="Food"),
     Flashcard(front="Le Verre", back="Glass"),
+    Flashcard(front="L'ecole", back="School"),
+    Flashcard(front="Le nuit", back="Night"),
+    Flashcard(front="Bonjour", back="Hello (Day)"),
+    Flashcard(front="Bonsoir", back="Hello (Night)"),
+    Flashcard(front="Voir", back="To See"),
 ]
