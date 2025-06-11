@@ -1,1 +1,29 @@
-You can read me if you really want to. 
+# French Learning App
+
+This repository contains a very small Flask application. It simply returns "Hello, world!" when accessed and can be deployed to [Render](https://render.com/).
+
+## Local Development
+
+```bash
+# Optional: create a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python app.py
+```
+
+By default the app listens on `0.0.0.0:5000`, or you can set the `PORT` environment variable to override it.
+
+## Deploying to Render
+
+1. Push this repository to your own GitHub account.
+2. Create a new **Web Service** on Render and connect it to your repository.
+3. Use the following settings:
+   - **Build command:** `pip install -r requirements.txt`
+   - **Start command:** `python app.py`
+
+Render automatically provides the `PORT` environment variable, so the service will start successfully.
