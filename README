@@ -1,6 +1,18 @@
 # French Learning App
 
-This repository contains a very small Flask application. It simply returns "Hello, world!" when accessed and can be deployed to [Render](https://render.com/).
+This repository contains a small Flask application. It exposes a single route returning "Hello, world!" and includes starter data for French flashcards.
+
+## Flashcard Data
+
+The `flashcards.py` module defines a simple `Flashcard` dataclass and an initial set of cards:
+
+- Le Chat → Cat
+- Le Chien → Dog
+- La Maison → House
+- Le Homme → Man
+- L'Amour → Love
+
+These cards can be imported by future parts of the application to present them to users.
 
 ## Local Development
 
