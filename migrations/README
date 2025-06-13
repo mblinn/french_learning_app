@@ -1,0 +1,7 @@
+This directory contains the database migration files managed by Flask-Migrate
+(Alembic). To create or apply migrations, use the Flask CLI:
+
+```
+flask db migrate -m "<message>"
+flask db upgrade
+```
