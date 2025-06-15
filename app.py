@@ -31,7 +31,7 @@ def flashcards_airtable_page():
     if not api_key:
         print("AIRTABLE_API_KEY environment variable not set", file=sys.stderr)
     else:
-        url = "https://api.airtable.com/v0/french_words_base/french_words"
+        url = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
         headers = {"Authorization": f"Bearer {api_key}"}
         params = {"maxRecords": 20}
         try:
