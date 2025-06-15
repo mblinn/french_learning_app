@@ -3,6 +3,8 @@ from dataclasses import asdict
 from flashcards import flashcards, Flashcard
 import requests
 import os
+import sys
+import traceback
 
 app = Flask(__name__)
 
@@ -26,20 +28,25 @@ def flashcards_airtable_page():
     """Render flashcards from Airtable."""
     api_key = os.environ.get("AIRTABLE_API_KEY")
     airtable_cards = []
-    if api_key:
+    if not api_key:
+        print("AIRTABLE_API_KEY environment variable not set", file=sys.stderr)
+    else:
         url = "https://api.airtable.com/v0/french_words_base/french_words"
         headers = {"Authorization": f"Bearer {api_key}"}
         params = {"maxRecords": 20}
         try:
             resp = requests.get(url, headers=headers, params=params)
-            if resp.status_code == 200:
-                data = resp.json()
-                for rec in data.get("records", []):
-                    fields = rec.get("fields", {})
-                    front = fields.get("french_word", "")
-                    back = fields.get("english_word", "")
-                    if front or back:
-                        airtable_cards.append(Flashcard(front=front, back=back))
+            resp.raise_for_status()
+            data = resp.json()
+            for rec in data.get("records", []):
+                fields = rec.get("fields", {})
+                front = fields.get("french_word", "")
+                back = fields.get("english_word", "")
+                if front or back:
+                    airtable_cards.append(Flashcard(front=front, back=back))
+        except Exception:
+            print("Error fetching flashcards from Airtable", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
 
     return render_template(
         "flashcards_airtable.html",
