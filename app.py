@@ -40,8 +40,6 @@ def flashcards_airtable_page():
                     back = fields.get("english_word", "")
                     if front or back:
                         airtable_cards.append(Flashcard(front=front, back=back))
-        except Exception:
-            pass
 
     return render_template(
         "flashcards_airtable.html",
