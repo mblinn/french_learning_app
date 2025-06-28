@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from airtable_data_access import (
     fetch_flashcards,
+    fetch_spaced_rep_frequencies,
     log_practice,
     AIRTABLE_URL,
     SPACED_REP_URL,
@@ -16,13 +17,15 @@ from flashcards import Flashcard
 
 class FetchFlashcardsTests(unittest.TestCase):
     @patch('airtable_data_access.get_random_frequencies')
+    @patch('airtable_data_access.fetch_spaced_rep_frequencies')
     @patch('airtable_data_access.requests.get')
-    def test_query_parameters(self, mock_get, mock_rand):
+    def test_query_parameters(self, mock_get, mock_spaced, mock_rand):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
         mock_resp.json.return_value = {"records": []}
         mock_get.return_value = mock_resp
 
+        mock_spaced.return_value = [101, 102, 103, 104, 105]
         mock_rand.return_value = list(range(10, 30))
 
         fetch_flashcards('TOKEN')
@@ -31,7 +34,9 @@ class FetchFlashcardsTests(unittest.TestCase):
         args, kwargs = mock_get.call_args
         self.assertEqual(args[0], AIRTABLE_URL)
         self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer TOKEN'})
-        formula = "OR(" + ",".join([f"{{Frequency}} = \"{i}\"" for i in mock_rand.return_value]) + ")"
+        unique_randoms = [i for i in mock_rand.return_value if i not in mock_spaced.return_value]
+        selected = mock_spaced.return_value + unique_randoms[: 20 - len(mock_spaced.return_value)]
+        formula = "OR(" + ",".join([f"{{Frequency}} = \"{i}\"" for i in selected]) + ")"
         expected_params = {
             'maxRecords': 20,
             'filterByFormula': formula,
@@ -41,8 +46,9 @@ class FetchFlashcardsTests(unittest.TestCase):
         self.assertEqual(kwargs['params'], expected_params)
 
     @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 21)))
+    @patch('airtable_data_access.fetch_spaced_rep_frequencies', return_value=[])
     @patch('airtable_data_access.requests.get')
-    def test_parses_flashcards(self, mock_get, mock_rand):
+    def test_parses_flashcards(self, mock_get, mock_spaced, mock_rand):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
         mock_resp.json.return_value = {
@@ -76,8 +82,9 @@ class FetchFlashcardsTests(unittest.TestCase):
         )
 
     @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 21)))
+    @patch('airtable_data_access.fetch_spaced_rep_frequencies', return_value=[])
     @patch('airtable_data_access.requests.get')
-    def test_handles_translation_dict(self, mock_get, mock_rand):
+    def test_handles_translation_dict(self, mock_get, mock_spaced, mock_rand):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
         mock_resp.json.return_value = {
@@ -118,6 +125,35 @@ class FetchFlashcardsTests(unittest.TestCase):
             kwargs['json'],
             {'fields': {'Date': '2023-01-01', 'Frequency': '3'}}
         )
+
+
+class SpacedRepFrequencyTests(unittest.TestCase):
+    @patch('airtable_data_access.requests.get')
+    def test_fetch_spaced_rep_frequencies(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "records": [
+                {"fields": {"Frequency": "5"}},
+                {"fields": {"Frequency": "10"}},
+                {"fields": {"Frequency": "3"}},
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        freqs = fetch_spaced_rep_frequencies('TOKEN')
+
+        mock_get.assert_called_once()
+        args, kwargs = mock_get.call_args
+        self.assertEqual(args[0], SPACED_REP_URL)
+        expected_params = {
+            'maxRecords': 5,
+            'sort[0][field]': 'Date',
+            'sort[0][direction]': 'asc'
+        }
+        self.assertEqual(kwargs['params'], expected_params)
+        self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer TOKEN'})
+        self.assertEqual(freqs, [5, 10, 3])
 
 
 if __name__ == '__main__':
