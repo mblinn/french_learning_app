@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+import io
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -9,6 +10,8 @@ from airtable_data_access import (
     fetch_flashcards,
     fetch_spaced_rep_frequencies,
     log_practice,
+    log_airtable_error,
+    build_url,
     AIRTABLE_URL,
     SPACED_REP_URL,
 )
@@ -221,6 +224,28 @@ class SpacedRepFrequencyTests(unittest.TestCase):
         self.assertEqual(kwargs['params'], expected_params)
         self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer TOKEN'})
         self.assertEqual(freqs, [5, 10, 3])
+
+
+class BuildUrlTests(unittest.TestCase):
+    def test_build_url_encodes_params(self):
+        url = build_url('https://example.com/api', {'a': '1', 'b': 'x y'})
+        self.assertTrue(url.startswith('https://example.com/api?'))
+        self.assertIn('a=1', url)
+        self.assertIn('b=x+y', url)
+
+
+class LogAirtableErrorTests(unittest.TestCase):
+    def test_log_airtable_error_outputs_url_and_json(self):
+        payload = {'a': 1, 'b': 2}
+        url = 'https://example.com/path'
+        with patch('traceback.print_exc') as mock_trace, \
+             patch('sys.stderr', new_callable=io.StringIO) as fake_err:
+            log_airtable_error('Test error', url, payload)
+            output = fake_err.getvalue()
+        self.assertIn('Test error. URL: https://example.com/path', output)
+        self.assertIn('"a": 1', output)
+        self.assertIn('"b": 2', output)
+        mock_trace.assert_called_once()
 
 
 if __name__ == '__main__':

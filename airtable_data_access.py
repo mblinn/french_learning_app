@@ -2,13 +2,28 @@ import requests
 import sys
 import traceback
 import random
-from typing import List
+import json
+from typing import List, Optional
 
 from flashcards import Flashcard
 
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
 SPACED_REP_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/spaced_rep"
+
+
+def build_url(base_url: str, params: Optional[dict] = None) -> str:
+    """Return ``base_url`` with ``params`` encoded as query string."""
+    req = requests.Request("GET", base_url, params=params)
+    return req.prepare().url
+
+
+def log_airtable_error(message: str, url: str, payload: Optional[dict] = None) -> None:
+    """Print an error ``message`` with ``url`` and optional ``payload``."""
+    print(f"{message}. URL: {url}", file=sys.stderr)
+    if payload is not None:
+        print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
 
 
 def get_random_frequencies(count: int = 20, max_frequency: int = 200) -> List[int]:
@@ -25,6 +40,7 @@ def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> List[int]:
         "sort[0][field]": "Date",
         "sort[0][direction]": "asc",
     }
+    url = build_url(SPACED_REP_URL, params)
     try:
         resp = requests.get(SPACED_REP_URL, headers=headers, params=params)
         resp.raise_for_status()
@@ -40,8 +56,7 @@ def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> List[int]:
                     continue
         return freqs
     except Exception:
-        print("Error fetching spaced repetition data", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
+        log_airtable_error("Error fetching spaced repetition data", url)
         return []
 
 
@@ -59,6 +74,7 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
         "sort[0][field]": "Frequency",
         "sort[0][direction]": "asc",
     }
+    url = build_url(AIRTABLE_URL, params)
     try:
         resp = requests.get(AIRTABLE_URL, headers=headers, params=params)
         resp.raise_for_status()
@@ -75,8 +91,7 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
                 )
         return flashcards
     except Exception:
-        print("Error fetching flashcards from Airtable", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
+        log_airtable_error("Error fetching flashcards from Airtable", url)
     return []
 
 
@@ -93,9 +108,11 @@ def log_practice(api_key: str, frequency: str, date_str: str) -> bool:
         "Content-Type": "application/json",
     }
 
+    payload: Optional[dict] = None
+    # Look for an existing record for this frequency
+    params = {"filterByFormula": f"{{Frequency}} = '{frequency}'", "maxRecords": 1}
+    current_url = build_url(SPACED_REP_URL, params)
     try:
-        # Look for an existing record for this frequency
-        params = {"filterByFormula": f"{{Frequency}} = '{frequency}'", "maxRecords": 1}
         resp = requests.get(
             SPACED_REP_URL,
             headers={"Authorization": f"Bearer {api_key}"},
@@ -117,16 +134,17 @@ def log_practice(api_key: str, frequency: str, date_str: str) -> bool:
 
             payload = {"fields": {"Date": date_str, "Level": level}}
             update_url = f"{SPACED_REP_URL}/{rec_id}"
+            current_url = update_url
             resp = requests.patch(update_url, headers=headers, json=payload)
         else:
             payload = {
                 "fields": {"Date": date_str, "Frequency": frequency, "Level": 1}
             }
+            current_url = SPACED_REP_URL
             resp = requests.post(SPACED_REP_URL, headers=headers, json=payload)
 
         resp.raise_for_status()
         return True
     except Exception:
-        print("Error recording practice in Airtable", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
+        log_airtable_error("Error recording practice in Airtable", current_url, payload)
         return False
