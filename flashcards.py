@@ -6,6 +6,7 @@ class Flashcard:
     front: str  # French word
     back: str   # English translation
     frequency: str | None = None
+    level: int | None = None
 
 
 # Initial set of flashcards
