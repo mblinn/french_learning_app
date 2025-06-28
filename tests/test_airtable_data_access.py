@@ -15,12 +15,15 @@ from flashcards import Flashcard
 
 
 class FetchFlashcardsTests(unittest.TestCase):
+    @patch('airtable_data_access.get_random_frequencies')
     @patch('airtable_data_access.requests.get')
-    def test_query_parameters(self, mock_get):
+    def test_query_parameters(self, mock_get, mock_rand):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
         mock_resp.json.return_value = {"records": []}
         mock_get.return_value = mock_resp
+
+        mock_rand.return_value = list(range(10, 30))
 
         fetch_flashcards('TOKEN')
 
@@ -28,7 +31,7 @@ class FetchFlashcardsTests(unittest.TestCase):
         args, kwargs = mock_get.call_args
         self.assertEqual(args[0], AIRTABLE_URL)
         self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer TOKEN'})
-        formula = "OR(" + ",".join([f"{{Frequency}} = \"{i}\"" for i in range(1, 21)]) + ")"
+        formula = "OR(" + ",".join([f"{{Frequency}} = \"{i}\"" for i in mock_rand.return_value]) + ")"
         expected_params = {
             'maxRecords': 20,
             'filterByFormula': formula,
@@ -37,14 +40,15 @@ class FetchFlashcardsTests(unittest.TestCase):
         }
         self.assertEqual(kwargs['params'], expected_params)
 
+    @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 21)))
     @patch('airtable_data_access.requests.get')
-    def test_parses_flashcards(self, mock_get):
+    def test_parses_flashcards(self, mock_get, mock_rand):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
         mock_resp.json.return_value = {
             "records": [
-                {"fields": {"french_word": "Bonjour", "english_word": "Hello", "Frequency": "2"}},
-                {"fields": {"french_word": "", "english_word": "Empty", "Frequency": "5"}},
+                {"fields": {"french_word": "Bonjour", "english_translation": "Hello", "Frequency": "2"}},
+                {"fields": {"french_word": "", "english_translation": "Empty", "Frequency": "5"}},
             ]
         }
         mock_get.return_value = mock_resp
