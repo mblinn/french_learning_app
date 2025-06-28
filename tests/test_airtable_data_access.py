@@ -47,8 +47,20 @@ class FetchFlashcardsTests(unittest.TestCase):
         mock_resp.raise_for_status.return_value = None
         mock_resp.json.return_value = {
             "records": [
-                {"fields": {"french_word": "Bonjour", "english_translation": "Hello", "Frequency": "2"}},
-                {"fields": {"french_word": "", "english_translation": "Empty", "Frequency": "5"}},
+                {
+                    "fields": {
+                        "french_word": "Bonjour",
+                        "english_translation": {"value": "Hello"},
+                        "Frequency": "2",
+                    }
+                },
+                {
+                    "fields": {
+                        "french_word": "",
+                        "english_translation": {"value": "Empty"},
+                        "Frequency": "5",
+                    }
+                },
             ]
         }
         mock_get.return_value = mock_resp
@@ -62,6 +74,28 @@ class FetchFlashcardsTests(unittest.TestCase):
                 Flashcard(front="", back="Empty", frequency="5"),
             ],
         )
+
+    @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 21)))
+    @patch('airtable_data_access.requests.get')
+    def test_handles_translation_dict(self, mock_get, mock_rand):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "records": [
+                {
+                    "fields": {
+                        "french_word": "Savoir",
+                        "english_translation": {"state": "generated", "value": "to know", "isStale": False},
+                        "Frequency": "7",
+                    }
+                },
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        cards = fetch_flashcards('TOKEN')
+
+        self.assertEqual(cards, [Flashcard(front="Savoir", back="to know", frequency="7")])
 
     @patch('airtable_data_access.requests.post')
     def test_log_practice(self, mock_post):
