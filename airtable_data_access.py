@@ -81,14 +81,49 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
 
 
 def log_practice(api_key: str, frequency: str, date_str: str) -> bool:
-    """Record a practice event in the spaced_rep table."""
+    """Record a practice event in the spaced_rep table.
+
+    If an entry already exists for ``frequency`` its ``Date`` is updated and the
+    ``Level`` field is incremented up to a maximum of 5. Otherwise a new row is
+    created with ``Level`` set to 1.
+    """
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    payload = {"fields": {"Date": date_str, "Frequency": frequency}}
+
     try:
-        resp = requests.post(SPACED_REP_URL, headers=headers, json=payload)
+        # Look for an existing record for this frequency
+        params = {"filterByFormula": f"{{Frequency}} = '{frequency}'", "maxRecords": 1}
+        resp = requests.get(
+            SPACED_REP_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            params=params,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        records = data.get("records", [])
+
+        if records:
+            rec = records[0]
+            rec_id = rec.get("id")
+            level = rec.get("fields", {}).get("Level", 0)
+            try:
+                level = int(level)
+            except (TypeError, ValueError):
+                level = 0
+            level = min(level + 1, 5)
+
+            payload = {"fields": {"Date": date_str, "Level": level}}
+            update_url = f"{SPACED_REP_URL}/{rec_id}"
+            resp = requests.patch(update_url, headers=headers, json=payload)
+        else:
+            payload = {
+                "fields": {"Date": date_str, "Frequency": frequency, "Level": 1}
+            }
+            resp = requests.post(SPACED_REP_URL, headers=headers, json=payload)
+
         resp.raise_for_status()
         return True
     except Exception:
