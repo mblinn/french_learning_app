@@ -131,8 +131,9 @@ def log_practice(api_key: str, frequency: str, date_str: str) -> bool:
             except (TypeError, ValueError):
                 level = 0
             level = min(level + 1, 5)
+            level_str = str(level)
 
-            payload = {"fields": {"Date": date_str, "Level": level}}
+            payload = {"fields": {"Date": date_str, "Level": level_str}}
             update_url = f"{SPACED_REP_URL}/{rec_id}"
             current_url = update_url
             resp = requests.patch(update_url, headers=headers, json=payload)
