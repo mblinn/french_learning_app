@@ -38,17 +38,34 @@
             width: 100%;
             height: 100%;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             border: 1px solid #000;
             border-radius: 8px;
             backface-visibility: hidden;
-            background: #fff;
             font-weight: bold;
+        }
+        .front {
+            background: lightblue;
+            color: #000;
+            font-size: 24pt;
         }
         .back {
             transform: rotateY(180deg);
-            color: blue;
+            background: lightgreen;
+            color: #000;
+            font-size: 24pt;
+        }
+        .back-buttons {
+            margin-top: auto;
+            padding-bottom: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .back-buttons button {
+            font-size: 12pt;
+            padding: 5px 10px;
         }
         nav {
             margin-top: 20px;
@@ -74,7 +91,13 @@
         {% for card in flashcards %}
         <div class="flashcard{% if loop.index0 == 0 %} active{% endif %}">
             <div class="side front">{{ card.front }}</div>
-            <div class="side back">{{ card.back }}</div>
+            <div class="side back">
+                <span>{{ card.back }}</span>
+                <div class="back-buttons">
+                    <button type="button">I Got It</button>
+                    <button type="button">I Forgot It</button>
+                </div>
+            </div>
         </div>
         {% endfor %}
     </div>
