@@ -155,6 +155,14 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ frequency: freq })
                 });
+            } else if (btn.textContent.includes('I Forgot It')) {
+                const card = btn.closest('.flashcard');
+                const freq = card.dataset.frequency;
+                fetch('/api/forget', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ frequency: freq })
+                });
             }
         });
     });

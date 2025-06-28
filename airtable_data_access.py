@@ -149,3 +149,58 @@ def log_practice(api_key: str, frequency: str, date_str: str) -> bool:
     except Exception:
         log_airtable_error("Error recording practice in Airtable", current_url, payload)
         return False
+
+
+def log_forget(api_key: str, frequency: str, date_str: str) -> bool:
+    """Record a forgotten flashcard in the spaced_rep table.
+
+    If an entry exists for ``frequency`` its ``Date`` is updated and the ``Level``
+    field is decremented down to a minimum of 1. If no record exists a new row is
+    created with ``Level`` set to 1.
+    """
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload: Optional[dict] = None
+    params = {"filterByFormula": f"{{Frequency}} = '{frequency}'", "maxRecords": 1}
+    current_url = build_url(SPACED_REP_URL, params)
+    try:
+        resp = requests.get(
+            SPACED_REP_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            params=params,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        records = data.get("records", [])
+
+        if records:
+            rec = records[0]
+            rec_id = rec.get("id")
+            level = rec.get("fields", {}).get("Level", 0)
+            try:
+                level = int(level)
+            except (TypeError, ValueError):
+                level = 0
+            level = max(level - 1, 1)
+            level_str = str(level)
+
+            payload = {"fields": {"Date": date_str, "Level": level_str}}
+            update_url = f"{SPACED_REP_URL}/{rec_id}"
+            current_url = update_url
+            resp = requests.patch(update_url, headers=headers, json=payload)
+        else:
+            payload = {
+                "fields": {"Date": date_str, "Frequency": frequency, "Level": 1}
+            }
+            current_url = SPACED_REP_URL
+            resp = requests.post(SPACED_REP_URL, headers=headers, json=payload)
+
+        resp.raise_for_status()
+        return True
+    except Exception:
+        log_airtable_error("Error recording forget in Airtable", current_url, payload)
+        return False
