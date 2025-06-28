@@ -1,10 +1,9 @@
 from flask import Flask, jsonify, render_template
 from dataclasses import asdict
 from flashcards import flashcards, Flashcard
-import requests
 import os
 import sys
-import traceback
+from airtable_data_access import fetch_flashcards
 
 app = Flask(__name__)
 
@@ -27,34 +26,11 @@ def list_flashcards():
 def flashcards_airtable_page():
     """Render flashcards from Airtable."""
     api_key = os.environ.get("AIRTABLE_API_KEY")
-    airtable_cards = []
     if not api_key:
         print("AIRTABLE_API_KEY environment variable not set", file=sys.stderr)
+        airtable_cards = []
     else:
-        url = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
-        headers = {"Authorization": f"Bearer {api_key}"}
-        formula = "OR(" + ",".join([
-            f"{{Frequency}} = \"{i}\"" for i in range(1, 21)
-        ]) + ")"
-        params = {
-            "maxRecords": 20,
-            "filterByFormula": formula,
-            "sort[0][field]": "Frequency",
-            "sort[0][direction]": "asc",
-        }
-        try:
-            resp = requests.get(url, headers=headers, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-            for rec in data.get("records", []):
-                fields = rec.get("fields", {})
-                front = fields.get("french_word", "")
-                back = fields.get("english_word", "")
-                if front or back:
-                    airtable_cards.append(Flashcard(front=front, back=back))
-        except Exception:
-            print("Error fetching flashcards from Airtable", file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
+        airtable_cards = fetch_flashcards(api_key)
 
     return render_template(
         "flashcards_airtable.html",
