@@ -97,7 +97,7 @@
 <body>
     <div id="card-container">
         {% for card in flashcards %}
-        <div class="flashcard{% if loop.index0 == 0 %} active{% endif %}">
+        <div class="flashcard{% if loop.index0 == 0 %} active{% endif %}" data-frequency="{{ card.frequency }}">
             <div class="side front">{{ card.front }}</div>
             <div class="side back">
                 <div class="back-text">{{ card.back }}</div>
@@ -147,6 +147,15 @@
     document.querySelectorAll('.back-action').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (btn.textContent.includes('I Got It')) {
+                const card = btn.closest('.flashcard');
+                const freq = card.dataset.frequency;
+                fetch('/api/practice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ frequency: freq })
+                });
+            }
         });
     });
 
