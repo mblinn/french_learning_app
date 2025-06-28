@@ -33,7 +33,15 @@ def flashcards_airtable_page():
     else:
         url = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
         headers = {"Authorization": f"Bearer {api_key}"}
-        params = {"maxRecords": 20}
+        formula = "OR(" + ",".join([
+            f"{{Frequency}} = \"{i}\"" for i in range(1, 21)
+        ]) + ")"
+        params = {
+            "maxRecords": 20,
+            "filterByFormula": formula,
+            "sort[0][field]": "Frequency",
+            "sort[0][direction]": "asc",
+        }
         try:
             resp = requests.get(url, headers=headers, params=params)
             resp.raise_for_status()
