@@ -36,7 +36,7 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
         for rec in data.get("records", []):
             fields = rec.get("fields", {})
             front = fields.get("french_word", "")
-            back = fields.get("english_translation", "")
+            back = fields.get("english_translation", {}).get("value", "")
             freq = str(fields.get("Frequency", ""))
             if front or back:
                 flashcards.append(
