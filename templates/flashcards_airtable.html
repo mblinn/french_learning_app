@@ -57,6 +57,14 @@
             color: #000;
             font-size: 24pt;
         }
+        .back-text {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            width: 100%;
+        }
         .back-buttons {
             margin-top: auto;
             padding-bottom: 10px;
@@ -92,10 +100,10 @@
         <div class="flashcard{% if loop.index0 == 0 %} active{% endif %}">
             <div class="side front">{{ card.front }}</div>
             <div class="side back">
-                <span>{{ card.back }}</span>
+                <div class="back-text">{{ card.back }}</div>
                 <div class="back-buttons">
-                    <button type="button">I Got It</button>
-                    <button type="button">I Forgot It</button>
+                    <button type="button" class="back-action">I Got It</button>
+                    <button type="button" class="back-action">I Forgot It</button>
                 </div>
             </div>
         </div>
@@ -126,12 +134,20 @@
     }
 
     cards.forEach((card, i) => {
-        card.addEventListener('click', () => {
-            card.classList.toggle('flipped');
+        card.addEventListener('click', (e) => {
+            if (!e.target.closest('.back-action')) {
+                card.classList.toggle('flipped');
+            }
         });
         if (i !== 0) {
             card.style.display = 'none';
         }
+    });
+
+    document.querySelectorAll('.back-action').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
     });
 
     prev.addEventListener('click', () => {
