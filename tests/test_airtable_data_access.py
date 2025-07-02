@@ -30,7 +30,7 @@ class FetchFlashcardsTests(unittest.TestCase):
         mock_get.return_value = mock_resp
 
         mock_spaced.return_value = [101, 102, 103, 104, 105]
-        mock_rand.return_value = list(range(10, 30))
+        mock_rand.return_value = list(range(10, 40))
 
         fetch_flashcards('TOKEN')
 
@@ -39,17 +39,17 @@ class FetchFlashcardsTests(unittest.TestCase):
         self.assertEqual(args[0], AIRTABLE_URL)
         self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer TOKEN'})
         unique_randoms = [i for i in mock_rand.return_value if i not in mock_spaced.return_value]
-        selected = mock_spaced.return_value + unique_randoms[: 20 - len(mock_spaced.return_value)]
+        selected = mock_spaced.return_value + unique_randoms[: 25 - len(mock_spaced.return_value)]
         formula = "OR(" + ",".join([f"{{Frequency}} = \"{i}\"" for i in selected]) + ")"
         expected_params = {
-            'maxRecords': 20,
+            'maxRecords': 25,
             'filterByFormula': formula,
             'sort[0][field]': 'Frequency',
             'sort[0][direction]': 'asc',
         }
         self.assertEqual(kwargs['params'], expected_params)
 
-    @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 21)))
+    @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 26)))
     @patch('airtable_data_access.fetch_spaced_rep_frequencies', return_value=[])
     @patch('airtable_data_access.requests.get')
     def test_parses_flashcards(self, mock_get, mock_spaced, mock_rand):
@@ -85,7 +85,7 @@ class FetchFlashcardsTests(unittest.TestCase):
             ],
         )
 
-    @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 21)))
+    @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 26)))
     @patch('airtable_data_access.fetch_spaced_rep_frequencies', return_value=[])
     @patch('airtable_data_access.requests.get')
     def test_handles_translation_dict(self, mock_get, mock_spaced, mock_rand):
@@ -294,26 +294,26 @@ class SpacedRepFrequencyTests(unittest.TestCase):
         mock_resp.raise_for_status.return_value = None
         mock_resp.json.return_value = {
             "records": [
-                {"fields": {"Frequency": "5"}},
-                {"fields": {"Frequency": "10"}},
-                {"fields": {"Frequency": "3"}},
+                {"fields": {"Frequency": "5"}}
             ]
         }
         mock_get.return_value = mock_resp
 
         freqs = fetch_spaced_rep_frequencies('TOKEN')
 
-        mock_get.assert_called_once()
-        args, kwargs = mock_get.call_args
-        self.assertEqual(args[0], SPACED_REP_URL)
-        expected_params = {
-            'maxRecords': 5,
-            'sort[0][field]': 'Date',
-            'sort[0][direction]': 'asc'
-        }
-        self.assertEqual(kwargs['params'], expected_params)
-        self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer TOKEN'})
-        self.assertEqual(freqs, [5, 10, 3])
+        self.assertEqual(mock_get.call_count, 5)
+        headers = {'Authorization': 'Bearer TOKEN'}
+        for i, call in enumerate(mock_get.call_args_list, start=1):
+            args, kwargs = call
+            self.assertEqual(args[0], SPACED_REP_URL)
+            self.assertEqual(kwargs['headers'], headers)
+            params = kwargs['params']
+            self.assertEqual(params['maxRecords'], 5)
+            self.assertEqual(params['sort[0][field]'], 'Date')
+            self.assertEqual(params['sort[0][direction]'], 'asc')
+            self.assertIn(f"{{Level}} = '{i}'", params['filterByFormula'])
+
+        self.assertEqual(freqs, [5, 5, 5, 5, 5])
 
 
 class BuildUrlTests(unittest.TestCase):
