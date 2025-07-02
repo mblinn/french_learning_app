@@ -73,12 +73,14 @@ def main(argv: List[str] | None = None) -> int:
 
     Or run the script directly from the project root::
 
-        ./scripts/translate_words.py 50-100 MY_API_KEY
+        ./scripts/translate_words.py --freq_range=50-100 --api_key==MY_API_KEY
     """
     parser = argparse.ArgumentParser(description="Fetch French words from Airtable")
-    parser.add_argument("freq_range", help="frequency range, e.g. 1-20")
-    parser.add_argument("api_key", help="Airtable API key")
+    parser.add_argument("--freq_range", help="frequency range, e.g. 1-20")
+    parser.add_argument("--api_key", help="Airtable API key")
     args = parser.parse_args(argv)
+
+    print(f"args.freq_range: {args.freq_range}")
 
     start, end = parse_frequency_range(args.freq_range)
     words = fetch_words(args.api_key, start, end)
