@@ -17,7 +17,6 @@ from airtable_data_access import (
     SPACED_REP_URL,
     Flashcard
 )
-from flashcards import Flashcard
 
 
 class FetchFlashcardsTests(unittest.TestCase):
