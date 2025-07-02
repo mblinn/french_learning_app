@@ -8,21 +8,6 @@ from airtable_data_access import fetch_flashcards, log_practice, log_forget
 
 app = Flask(__name__)
 
-@app.route("/")
-def hello():
-    return "Hello, world!"
-
-@app.route("/flashcards")
-def flashcards_page():
-    """Render a page with visual flashcards."""
-    return render_template("flashcards.html", flashcards=flashcards)
-
-@app.route("/api/flashcards")
-def list_flashcards():
-    """Return all flashcards as JSON."""
-    return jsonify([asdict(card) for card in flashcards])
-
-
 @app.route("/flashcards_airtable")
 def flashcards_airtable_page():
     """Render flashcards from Airtable."""
