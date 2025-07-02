@@ -1,10 +1,16 @@
 import argparse
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import requests
 
-from airtable_data_access import AIRTABLE_URL, build_url
+AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
+
+
+def build_url(base_url: str, params: Optional[dict] = None) -> str:
+    """Return ``base_url`` with ``params`` encoded as query string."""
+    req = requests.Request("GET", base_url, params=params)
+    return req.prepare().url
 
 
 def parse_frequency_range(range_str: str) -> Tuple[int, int]:

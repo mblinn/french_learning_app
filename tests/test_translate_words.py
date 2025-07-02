@@ -1,8 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from scripts.translate_words import parse_frequency_range, fetch_words
-from airtable_data_access import AIRTABLE_URL
+from scripts.translate_words import parse_frequency_range, fetch_words, AIRTABLE_URL
 
 
 class ParseFrequencyRangeTests(unittest.TestCase):
