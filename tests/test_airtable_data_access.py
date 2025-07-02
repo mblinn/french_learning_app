@@ -20,9 +20,9 @@ from flashcards import Flashcard
 
 
 class FetchFlashcardsTests(unittest.TestCase):
-    @patch('airtable_data_access.get_random_frequencies')
-    @patch('airtable_data_access.fetch_spaced_rep_frequencies')
-    @patch('airtable_data_access.requests.get')
+    @patch("airtable_data_access.get_random_frequencies")
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies")
+    @patch("airtable_data_access.requests.get")
     def test_query_parameters(self, mock_get, mock_spaced, mock_rand):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
@@ -32,26 +32,33 @@ class FetchFlashcardsTests(unittest.TestCase):
         mock_spaced.return_value = [101, 102, 103, 104, 105]
         mock_rand.return_value = list(range(10, 40))
 
-        fetch_flashcards('TOKEN')
+        fetch_flashcards("TOKEN")
 
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
         self.assertEqual(args[0], AIRTABLE_URL)
-        self.assertEqual(kwargs['headers'], {'Authorization': 'Bearer TOKEN'})
-        unique_randoms = [i for i in mock_rand.return_value if i not in mock_spaced.return_value]
-        selected = mock_spaced.return_value + unique_randoms[: 25 - len(mock_spaced.return_value)]
-        formula = "OR(" + ",".join([f"{{Frequency}} = \"{i}\"" for i in selected]) + ")"
+        self.assertEqual(kwargs["headers"], {"Authorization": "Bearer TOKEN"})
+        unique_randoms = [
+            i for i in mock_rand.return_value if i not in mock_spaced.return_value
+        ]
+        selected = (
+            mock_spaced.return_value
+            + unique_randoms[: 25 - len(mock_spaced.return_value)]
+        )
+        formula = "OR(" + ",".join([f'{{Frequency}} = "{i}"' for i in selected]) + ")"
         expected_params = {
-            'maxRecords': 25,
-            'filterByFormula': formula,
-            'sort[0][field]': 'Frequency',
-            'sort[0][direction]': 'asc',
+            "maxRecords": 25,
+            "filterByFormula": formula,
+            "sort[0][field]": "Frequency",
+            "sort[0][direction]": "asc",
         }
-        self.assertEqual(kwargs['params'], expected_params)
+        self.assertEqual(kwargs["params"], expected_params)
 
-    @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 26)))
-    @patch('airtable_data_access.fetch_spaced_rep_frequencies', return_value=[])
-    @patch('airtable_data_access.requests.get')
+    @patch(
+        "airtable_data_access.get_random_frequencies", return_value=list(range(1, 26))
+    )
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value=[])
+    @patch("airtable_data_access.requests.get")
     def test_parses_flashcards(self, mock_get, mock_spaced, mock_rand):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
@@ -75,7 +82,7 @@ class FetchFlashcardsTests(unittest.TestCase):
         }
         mock_get.return_value = mock_resp
 
-        cards = fetch_flashcards('TOKEN')
+        cards = fetch_flashcards("TOKEN")
 
         self.assertEqual(
             cards,
@@ -85,9 +92,11 @@ class FetchFlashcardsTests(unittest.TestCase):
             ],
         )
 
-    @patch('airtable_data_access.get_random_frequencies', return_value=list(range(1, 26)))
-    @patch('airtable_data_access.fetch_spaced_rep_frequencies', return_value=[])
-    @patch('airtable_data_access.requests.get')
+    @patch(
+        "airtable_data_access.get_random_frequencies", return_value=list(range(1, 26))
+    )
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value=[])
+    @patch("airtable_data_access.requests.get")
     def test_handles_translation_dict(self, mock_get, mock_spaced, mock_rand):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
@@ -96,7 +105,11 @@ class FetchFlashcardsTests(unittest.TestCase):
                 {
                     "fields": {
                         "french_word": "Savoir",
-                        "english_translation": {"state": "generated", "value": "to know", "isStale": False},
+                        "english_translation": {
+                            "state": "generated",
+                            "value": "to know",
+                            "isStale": False,
+                        },
                         "Frequency": "7",
                     }
                 },
@@ -104,12 +117,14 @@ class FetchFlashcardsTests(unittest.TestCase):
         }
         mock_get.return_value = mock_resp
 
-        cards = fetch_flashcards('TOKEN')
+        cards = fetch_flashcards("TOKEN")
 
-        self.assertEqual(cards, [Flashcard(front="Savoir", back="to know", frequency="7")])
+        self.assertEqual(
+            cards, [Flashcard(front="Savoir", back="to know", frequency="7")]
+        )
 
-    @patch('airtable_data_access.requests.post')
-    @patch('airtable_data_access.requests.get')
+    @patch("airtable_data_access.requests.post")
+    @patch("airtable_data_access.requests.get")
     def test_log_practice_creates_row(self, mock_get, mock_post):
         get_resp = MagicMock()
         get_resp.raise_for_status.return_value = None
@@ -120,32 +135,27 @@ class FetchFlashcardsTests(unittest.TestCase):
         post_resp.raise_for_status.return_value = None
         mock_post.return_value = post_resp
 
-        result = log_practice('TOKEN', '3', '2023-01-01')
+        result = log_practice("TOKEN", "3", "2023-01-01")
 
         self.assertTrue(result)
         mock_get.assert_called_once()
         mock_post.assert_called_once()
         args, kwargs = mock_post.call_args
         self.assertEqual(args[0], SPACED_REP_URL)
-        headers = {
-            'Authorization': 'Bearer TOKEN',
-            'Content-Type': 'application/json'
-        }
-        self.assertEqual(kwargs['headers'], headers)
+        headers = {"Authorization": "Bearer TOKEN", "Content-Type": "application/json"}
+        self.assertEqual(kwargs["headers"], headers)
         self.assertEqual(
-            kwargs['json'],
-            {'fields': {'Date': '2023-01-01', 'Frequency': '3', 'Level': 1}}
+            kwargs["json"],
+            {"fields": {"Date": "2023-01-01", "Frequency": "3", "Level": "1"}},
         )
 
-    @patch('airtable_data_access.requests.patch')
-    @patch('airtable_data_access.requests.get')
+    @patch("airtable_data_access.requests.patch")
+    @patch("airtable_data_access.requests.get")
     def test_log_practice_updates_row(self, mock_get, mock_patch):
         get_resp = MagicMock()
         get_resp.raise_for_status.return_value = None
         get_resp.json.return_value = {
-            "records": [
-                {"id": "rec123", "fields": {"Frequency": "3", "Level": 2}}
-            ]
+            "records": [{"id": "rec123", "fields": {"Frequency": "3", "Level": 2}}]
         }
         mock_get.return_value = get_resp
 
@@ -153,32 +163,26 @@ class FetchFlashcardsTests(unittest.TestCase):
         patch_resp.raise_for_status.return_value = None
         mock_patch.return_value = patch_resp
 
-        result = log_practice('TOKEN', '3', '2023-01-01')
+        result = log_practice("TOKEN", "3", "2023-01-01")
 
         self.assertTrue(result)
         mock_get.assert_called_once()
         mock_patch.assert_called_once()
         args, kwargs = mock_patch.call_args
         self.assertEqual(args[0], f"{SPACED_REP_URL}/rec123")
-        headers = {
-            'Authorization': 'Bearer TOKEN',
-            'Content-Type': 'application/json'
-        }
-        self.assertEqual(kwargs['headers'], headers)
+        headers = {"Authorization": "Bearer TOKEN", "Content-Type": "application/json"}
+        self.assertEqual(kwargs["headers"], headers)
         self.assertEqual(
-            kwargs['json'],
-            {'fields': {'Date': '2023-01-01', 'Level': '3'}}
+            kwargs["json"], {"fields": {"Date": "2023-01-01", "Level": "3"}}
         )
 
-    @patch('airtable_data_access.requests.patch')
-    @patch('airtable_data_access.requests.get')
+    @patch("airtable_data_access.requests.patch")
+    @patch("airtable_data_access.requests.get")
     def test_log_practice_caps_level(self, mock_get, mock_patch):
         get_resp = MagicMock()
         get_resp.raise_for_status.return_value = None
         get_resp.json.return_value = {
-            "records": [
-                {"id": "rec999", "fields": {"Frequency": "3", "Level": 5}}
-            ]
+            "records": [{"id": "rec999", "fields": {"Frequency": "3", "Level": 5}}]
         }
         mock_get.return_value = get_resp
 
@@ -186,19 +190,18 @@ class FetchFlashcardsTests(unittest.TestCase):
         patch_resp.raise_for_status.return_value = None
         mock_patch.return_value = patch_resp
 
-        result = log_practice('TOKEN', '3', '2023-01-01')
+        result = log_practice("TOKEN", "3", "2023-01-01")
 
         self.assertTrue(result)
         mock_patch.assert_called_once()
         args, kwargs = mock_patch.call_args
         self.assertEqual(args[0], f"{SPACED_REP_URL}/rec999")
         self.assertEqual(
-            kwargs['json'],
-            {'fields': {'Date': '2023-01-01', 'Level': '5'}}
+            kwargs["json"], {"fields": {"Date": "2023-01-01", "Level": "5"}}
         )
 
-    @patch('airtable_data_access.requests.post')
-    @patch('airtable_data_access.requests.get')
+    @patch("airtable_data_access.requests.post")
+    @patch("airtable_data_access.requests.get")
     def test_log_forget_creates_row(self, mock_get, mock_post):
         get_resp = MagicMock()
         get_resp.raise_for_status.return_value = None
@@ -209,32 +212,27 @@ class FetchFlashcardsTests(unittest.TestCase):
         post_resp.raise_for_status.return_value = None
         mock_post.return_value = post_resp
 
-        result = log_forget('TOKEN', '3', '2023-01-01')
+        result = log_forget("TOKEN", "3", "2023-01-01")
 
         self.assertTrue(result)
         mock_get.assert_called_once()
         mock_post.assert_called_once()
         args, kwargs = mock_post.call_args
         self.assertEqual(args[0], SPACED_REP_URL)
-        headers = {
-            'Authorization': 'Bearer TOKEN',
-            'Content-Type': 'application/json'
-        }
-        self.assertEqual(kwargs['headers'], headers)
+        headers = {"Authorization": "Bearer TOKEN", "Content-Type": "application/json"}
+        self.assertEqual(kwargs["headers"], headers)
         self.assertEqual(
-            kwargs['json'],
-            {'fields': {'Date': '2023-01-01', 'Frequency': '3', 'Level': 1}}
+            kwargs["json"],
+            {"fields": {"Date": "2023-01-01", "Frequency": "3", "Level": "1"}},
         )
 
-    @patch('airtable_data_access.requests.patch')
-    @patch('airtable_data_access.requests.get')
+    @patch("airtable_data_access.requests.patch")
+    @patch("airtable_data_access.requests.get")
     def test_log_forget_updates_row(self, mock_get, mock_patch):
         get_resp = MagicMock()
         get_resp.raise_for_status.return_value = None
         get_resp.json.return_value = {
-            "records": [
-                {"id": "rec123", "fields": {"Frequency": "3", "Level": 3}}
-            ]
+            "records": [{"id": "rec123", "fields": {"Frequency": "3", "Level": 3}}]
         }
         mock_get.return_value = get_resp
 
@@ -242,32 +240,26 @@ class FetchFlashcardsTests(unittest.TestCase):
         patch_resp.raise_for_status.return_value = None
         mock_patch.return_value = patch_resp
 
-        result = log_forget('TOKEN', '3', '2023-01-01')
+        result = log_forget("TOKEN", "3", "2023-01-01")
 
         self.assertTrue(result)
         mock_get.assert_called_once()
         mock_patch.assert_called_once()
         args, kwargs = mock_patch.call_args
         self.assertEqual(args[0], f"{SPACED_REP_URL}/rec123")
-        headers = {
-            'Authorization': 'Bearer TOKEN',
-            'Content-Type': 'application/json'
-        }
-        self.assertEqual(kwargs['headers'], headers)
+        headers = {"Authorization": "Bearer TOKEN", "Content-Type": "application/json"}
+        self.assertEqual(kwargs["headers"], headers)
         self.assertEqual(
-            kwargs['json'],
-            {'fields': {'Date': '2023-01-01', 'Level': '2'}}
+            kwargs["json"], {"fields": {"Date": "2023-01-01", "Level": "2"}}
         )
 
-    @patch('airtable_data_access.requests.patch')
-    @patch('airtable_data_access.requests.get')
+    @patch("airtable_data_access.requests.patch")
+    @patch("airtable_data_access.requests.get")
     def test_log_forget_mins_level(self, mock_get, mock_patch):
         get_resp = MagicMock()
         get_resp.raise_for_status.return_value = None
         get_resp.json.return_value = {
-            "records": [
-                {"id": "rec999", "fields": {"Frequency": "3", "Level": 1}}
-            ]
+            "records": [{"id": "rec999", "fields": {"Frequency": "3", "Level": 1}}]
         }
         mock_get.return_value = get_resp
 
@@ -275,68 +267,64 @@ class FetchFlashcardsTests(unittest.TestCase):
         patch_resp.raise_for_status.return_value = None
         mock_patch.return_value = patch_resp
 
-        result = log_forget('TOKEN', '3', '2023-01-01')
+        result = log_forget("TOKEN", "3", "2023-01-01")
 
         self.assertTrue(result)
         mock_patch.assert_called_once()
         args, kwargs = mock_patch.call_args
         self.assertEqual(args[0], f"{SPACED_REP_URL}/rec999")
         self.assertEqual(
-            kwargs['json'],
-            {'fields': {'Date': '2023-01-01', 'Level': '1'}}
+            kwargs["json"], {"fields": {"Date": "2023-01-01", "Level": "1"}}
         )
 
 
 class SpacedRepFrequencyTests(unittest.TestCase):
-    @patch('airtable_data_access.requests.get')
+    @patch("airtable_data_access.requests.get")
     def test_fetch_spaced_rep_frequencies(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
-        mock_resp.json.return_value = {
-            "records": [
-                {"fields": {"Frequency": "5"}}
-            ]
-        }
+        mock_resp.json.return_value = {"records": [{"fields": {"Frequency": "5"}}]}
         mock_get.return_value = mock_resp
 
-        freqs = fetch_spaced_rep_frequencies('TOKEN')
+        freqs = fetch_spaced_rep_frequencies("TOKEN")
 
         self.assertEqual(mock_get.call_count, 5)
-        headers = {'Authorization': 'Bearer TOKEN'}
+        headers = {"Authorization": "Bearer TOKEN"}
         for i, call in enumerate(mock_get.call_args_list, start=1):
             args, kwargs = call
             self.assertEqual(args[0], SPACED_REP_URL)
-            self.assertEqual(kwargs['headers'], headers)
-            params = kwargs['params']
-            self.assertEqual(params['maxRecords'], 5)
-            self.assertEqual(params['sort[0][field]'], 'Date')
-            self.assertEqual(params['sort[0][direction]'], 'asc')
-            self.assertIn(f"{{Level}} = '{i}'", params['filterByFormula'])
+            self.assertEqual(kwargs["headers"], headers)
+            params = kwargs["params"]
+            self.assertEqual(params["maxRecords"], 5)
+            self.assertEqual(params["sort[0][field]"], "Date")
+            self.assertEqual(params["sort[0][direction]"], "asc")
+            self.assertIn(f"{{Level}} = '{i}'", params["filterByFormula"])
 
         self.assertEqual(freqs, [5, 5, 5, 5, 5])
 
 
 class BuildUrlTests(unittest.TestCase):
     def test_build_url_encodes_params(self):
-        url = build_url('https://example.com/api', {'a': '1', 'b': 'x y'})
-        self.assertTrue(url.startswith('https://example.com/api?'))
-        self.assertIn('a=1', url)
-        self.assertIn('b=x+y', url)
+        url = build_url("https://example.com/api", {"a": "1", "b": "x y"})
+        self.assertTrue(url.startswith("https://example.com/api?"))
+        self.assertIn("a=1", url)
+        self.assertIn("b=x+y", url)
 
 
 class LogAirtableErrorTests(unittest.TestCase):
     def test_log_airtable_error_outputs_url_and_json(self):
-        payload = {'a': 1, 'b': 2}
-        url = 'https://example.com/path'
-        with patch('traceback.print_exc') as mock_trace, \
-             patch('sys.stderr', new_callable=io.StringIO) as fake_err:
-            log_airtable_error('Test error', url, payload)
+        payload = {"a": 1, "b": 2}
+        url = "https://example.com/path"
+        with patch("traceback.print_exc") as mock_trace, patch(
+            "sys.stderr", new_callable=io.StringIO
+        ) as fake_err:
+            log_airtable_error("Test error", url, payload)
             output = fake_err.getvalue()
-        self.assertIn('Test error. URL: https://example.com/path', output)
+        self.assertIn("Test error. URL: https://example.com/path", output)
         self.assertIn('"a": 1', output)
         self.assertIn('"b": 2', output)
         mock_trace.assert_called_once()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

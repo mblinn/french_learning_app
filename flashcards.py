@@ -4,8 +4,9 @@ from dataclasses import dataclass
 @dataclass
 class Flashcard:
     front: str  # French word
-    back: str   # English translation
+    back: str  # English translation
     frequency: str | None = None
+    level: str | None = None
 
 
 # Initial set of flashcards

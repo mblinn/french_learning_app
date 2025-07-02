@@ -45,6 +45,31 @@
             border-radius: 8px;
             backface-visibility: hidden;
             font-weight: bold;
+            overflow: hidden;
+        }
+        .level-banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        .level-badge {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            border: 1px solid #000;
+            background: #fff;
         }
         .front {
             background: lightblue;
@@ -100,11 +125,25 @@
     </style>
 </head>
 <body>
+    {% set level_colors = {
+        '1': '#FDEDEC',
+        '2': '#FDEBD0',
+        '3': '#FCF3CF',
+        '4': '#E9F7EF',
+        '5': '#E8F8F5'
+    } %}
     <div id="card-container">
         {% for card in flashcards %}
+        {% set lvl = card.level or '1' %}
+        {% set color = level_colors.get(lvl, '#FDEDEC') %}
         <div class="flashcard{% if loop.index0 == 0 %} active{% endif %}" data-frequency="{{ card.frequency }}">
-            <div class="side front">{{ card.front }}</div>
+            <div class="level-badge" style="background: {{ color }};">{{ lvl }}</div>
+            <div class="side front">
+                <div class="level-banner" style="background: {{ color }};"></div>
+                {{ card.front }}
+            </div>
             <div class="side back">
+                <div class="level-banner" style="background: {{ color }};"></div>
                 <div class="back-text">{{ card.back }}</div>
                 <div class="back-buttons">
                     <button type="button" class="back-action">I Got It</button>
