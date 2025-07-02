@@ -166,7 +166,7 @@ def log_practice(api_key: str, frequency: str, date_str: str) -> bool:
             resp = requests.patch(update_url, headers=headers, json=payload)
         else:
             payload = {
-                "fields": {"Date": date_str, "Frequency": frequency, "Level": 1}
+                "fields": {"Date": date_str, "Frequency": frequency, "Level": "1"}
             }
             current_url = SPACED_REP_URL
             resp = requests.post(SPACED_REP_URL, headers=headers, json=payload)
