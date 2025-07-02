@@ -4,17 +4,8 @@ import traceback
 import random
 import json
 from typing import List, Optional
-from dataclasses import dataclass
 
-
-@dataclass
-class Flashcard:
-    """Container for a single flashcard."""
-
-    front: str
-    back: str
-    frequency: str | None = None
-    level: str | None = None
+from flashcards import Flashcard
 
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
