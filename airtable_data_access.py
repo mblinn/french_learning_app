@@ -3,7 +3,7 @@ import sys
 import traceback
 import random
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
@@ -37,8 +37,8 @@ def get_random_frequencies(count: int = 20, max_frequency: int = 200) -> List[in
     population = list(range(1, max_frequency + 1))
     return random.sample(population, count)
 
-def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> Dict[int, int]:
-    """Return a mapping of flashcard frequencies to their current level.
+def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> List[Tuple[int, int]]:
+    """Return spaced repetition frequencies and their knowledge levels.
 
     ``count`` frequencies are retrieved for each knowledge level from 1-5.
     Older cards are preferred according to the following schedule:
@@ -48,11 +48,15 @@ def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> Dict[int, int]
     - Level 3: at least 2 weeks old
     - Level 4: at least 1 month old
     - Level 5: no age requirement
+
+    The spaced_rep table contains each frequency exactly once, so the results do
+    not need deduplication. Frequencies are returned sorted for deterministic
+    tests.
     """
 
     headers = {"Authorization": f"Bearer {api_key}"}
     level_age = {1: 1, 2: 7, 3: 14, 4: 30, 5: None}
-    freq_levels: Dict[int, int] = {}
+    results: List[Tuple[int, int]] = []
 
     for lvl in range(1, 6):
         age = level_age[lvl]
@@ -86,20 +90,24 @@ def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> Dict[int, int]
                     freq_int = int(freq)
                 except (TypeError, ValueError):
                     continue
-                # Store the latest level seen for this frequency
-                freq_levels[freq_int] = lvl
+                results.append((freq_int, lvl))
         except Exception:
+            # Log the error but continue processing other levels so that the
+            # caller gets as many frequencies as possible.
             log_airtable_error("Error fetching spaced repetition data", url)
             continue
 
-    return freq_levels
+    # Sort so that unit tests have deterministic output
+    return sorted(results)
 
 
 def fetch_flashcards(api_key: str) -> List[Flashcard]:
     """Fetch a set of flashcards using spaced repetition rules."""
     headers = {"Authorization": f"Bearer {api_key}"}
-    spaced_map = fetch_spaced_rep_frequencies(api_key)
-    spaced_freqs = list(spaced_map.keys())
+    spaced_pairs = fetch_spaced_rep_frequencies(api_key)
+    # Convert the list of tuples into a dictionary for quick lookups
+    spaced_map = {freq: lvl for freq, lvl in spaced_pairs}
+    spaced_freqs = [freq for freq, _ in spaced_pairs]
     random_freqs = get_random_frequencies(count=25)
     unique_randoms = [f for f in random_freqs if f not in spaced_map]
     selected = spaced_freqs + unique_randoms[: 25 - len(spaced_freqs)]
