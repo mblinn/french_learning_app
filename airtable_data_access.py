@@ -4,13 +4,19 @@ import traceback
 import random
 import json
 from typing import List, Optional
-
-from flashcards import Flashcard
-
+from dataclasses import dataclass
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
 SPACED_REP_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/spaced_rep"
 
+@dataclass
+class Flashcard:
+    """Container for a single flashcard."""
+
+    front: str
+    back: str
+    frequency: str | None = None
+    level: str | None = None
 
 def build_url(base_url: str, params: Optional[dict] = None) -> str:
     """Return ``base_url`` with ``params`` encoded as query string."""

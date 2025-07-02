@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, render_template, request
 from dataclasses import asdict
-from flashcards import flashcards, Flashcard
 import os
 import sys
 from datetime import datetime

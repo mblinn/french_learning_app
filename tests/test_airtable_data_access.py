@@ -15,6 +15,7 @@ from airtable_data_access import (
     build_url,
     AIRTABLE_URL,
     SPACED_REP_URL,
+    Flashcard
 )
 from flashcards import Flashcard
 
