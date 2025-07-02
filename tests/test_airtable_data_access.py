@@ -29,7 +29,7 @@ class FetchFlashcardsTests(unittest.TestCase):
         mock_resp.json.return_value = {"records": []}
         mock_get.return_value = mock_resp
 
-        mock_spaced.return_value = [101, 102, 103, 104, 105]
+        mock_spaced.return_value = {101: 1, 102: 1, 103: 1, 104: 1, 105: 1}
         mock_rand.return_value = list(range(10, 40))
 
         fetch_flashcards("TOKEN")
@@ -38,13 +38,8 @@ class FetchFlashcardsTests(unittest.TestCase):
         args, kwargs = mock_get.call_args
         self.assertEqual(args[0], AIRTABLE_URL)
         self.assertEqual(kwargs["headers"], {"Authorization": "Bearer TOKEN"})
-        unique_randoms = [
-            i for i in mock_rand.return_value if i not in mock_spaced.return_value
-        ]
-        selected = (
-            mock_spaced.return_value
-            + unique_randoms[: 25 - len(mock_spaced.return_value)]
-        )
+        unique_randoms = [i for i in mock_rand.return_value if i not in mock_spaced.return_value]
+        selected = list(mock_spaced.return_value.keys()) + unique_randoms[: 25 - len(mock_spaced.return_value)]
         formula = "OR(" + ",".join([f'{{Frequency}} = "{i}"' for i in selected]) + ")"
         expected_params = {
             "maxRecords": 25,
@@ -57,7 +52,7 @@ class FetchFlashcardsTests(unittest.TestCase):
     @patch(
         "airtable_data_access.get_random_frequencies", return_value=list(range(1, 26))
     )
-    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value=[])
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value={})
     @patch("airtable_data_access.requests.get")
     def test_parses_flashcards(self, mock_get, mock_spaced, mock_rand):
         mock_resp = MagicMock()
@@ -87,15 +82,15 @@ class FetchFlashcardsTests(unittest.TestCase):
         self.assertEqual(
             cards,
             [
-                Flashcard(front="Bonjour", back="Hello", frequency="2"),
-                Flashcard(front="", back="Empty", frequency="5"),
+                Flashcard(front="Bonjour", back="Hello", frequency="2", level="1"),
+                Flashcard(front="", back="Empty", frequency="5", level="1"),
             ],
         )
 
     @patch(
         "airtable_data_access.get_random_frequencies", return_value=list(range(1, 26))
     )
-    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value=[])
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value={})
     @patch("airtable_data_access.requests.get")
     def test_handles_translation_dict(self, mock_get, mock_spaced, mock_rand):
         mock_resp = MagicMock()
@@ -120,7 +115,35 @@ class FetchFlashcardsTests(unittest.TestCase):
         cards = fetch_flashcards("TOKEN")
 
         self.assertEqual(
-            cards, [Flashcard(front="Savoir", back="to know", frequency="7")]
+            cards, [Flashcard(front="Savoir", back="to know", frequency="7", level="1")]
+        )
+
+    @patch(
+        "airtable_data_access.get_random_frequencies", return_value=list(range(1, 26))
+    )
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value={2: 3})
+    @patch("airtable_data_access.requests.get")
+    def test_assigns_levels(self, mock_get, mock_spaced, mock_rand):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "records": [
+                {
+                    "fields": {
+                        "french_word": "Bonjour",
+                        "english_translation": {"value": "Hello"},
+                        "Frequency": "2",
+                    }
+                }
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        cards = fetch_flashcards("TOKEN")
+
+        self.assertEqual(
+            cards,
+            [Flashcard(front="Bonjour", back="Hello", frequency="2", level="3")],
         )
 
     @patch("airtable_data_access.requests.post")
@@ -300,7 +323,7 @@ class SpacedRepFrequencyTests(unittest.TestCase):
             self.assertEqual(params["sort[0][direction]"], "asc")
             self.assertIn(f"{{Level}} = '{i}'", params["filterByFormula"])
 
-        self.assertEqual(freqs, [5, 5, 5, 5, 5])
+        self.assertEqual(freqs, {5: 5})
 
 
 class BuildUrlTests(unittest.TestCase):

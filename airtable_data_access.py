@@ -3,7 +3,7 @@ import sys
 import traceback
 import random
 import json
-from typing import List, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
@@ -37,9 +37,8 @@ def get_random_frequencies(count: int = 20, max_frequency: int = 200) -> List[in
     population = list(range(1, max_frequency + 1))
     return random.sample(population, count)
 
-
-def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> List[int]:
-    """Return a list of flashcard frequencies based on spaced repetition logic.
+def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> Dict[int, int]:
+    """Return a mapping of flashcard frequencies to their current level.
 
     ``count`` frequencies are retrieved for each knowledge level from 1-5.
     Older cards are preferred according to the following schedule:
@@ -53,7 +52,7 @@ def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> List[int]:
 
     headers = {"Authorization": f"Bearer {api_key}"}
     level_age = {1: 1, 2: 7, 3: 14, 4: 30, 5: None}
-    freqs: List[int] = []
+    freq_levels: Dict[int, int] = {}
 
     for lvl in range(1, 6):
         age = level_age[lvl]
@@ -81,24 +80,28 @@ def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> List[int]:
             for rec in data.get("records", []):
                 fields = rec.get("fields", {})
                 freq = fields.get("Frequency")
-                if freq is not None:
-                    try:
-                        freqs.append(int(freq))
-                    except (TypeError, ValueError):
-                        continue
+                if freq is None:
+                    continue
+                try:
+                    freq_int = int(freq)
+                except (TypeError, ValueError):
+                    continue
+                # Store the latest level seen for this frequency
+                freq_levels[freq_int] = lvl
         except Exception:
             log_airtable_error("Error fetching spaced repetition data", url)
             continue
 
-    return freqs
+    return freq_levels
 
 
 def fetch_flashcards(api_key: str) -> List[Flashcard]:
     """Fetch a set of flashcards using spaced repetition rules."""
     headers = {"Authorization": f"Bearer {api_key}"}
-    spaced_freqs = fetch_spaced_rep_frequencies(api_key)
+    spaced_map = fetch_spaced_rep_frequencies(api_key)
+    spaced_freqs = list(spaced_map.keys())
     random_freqs = get_random_frequencies(count=25)
-    unique_randoms = [f for f in random_freqs if f not in spaced_freqs]
+    unique_randoms = [f for f in random_freqs if f not in spaced_map]
     selected = spaced_freqs + unique_randoms[: 25 - len(spaced_freqs)]
     formula = "OR(" + ",".join([f'{{Frequency}} = "{i}"' for i in selected]) + ")"
     params = {
@@ -117,13 +120,15 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
             fields = rec.get("fields", {})
             front = fields.get("french_word", "")
             back = fields.get("english_translation", {}).get("value", "")
-            freq = str(fields.get("Frequency", ""))
-            level = (
-                str(fields.get("Level")) if fields.get("Level") is not None else None
-            )
+            freq_str = str(fields.get("Frequency", ""))
+            try:
+                freq_int = int(freq_str)
+            except (TypeError, ValueError):
+                freq_int = None
+            level = str(spaced_map.get(freq_int, 1)) if freq_int is not None else "1"
             if front or back:
                 flashcards.append(
-                    Flashcard(front=front, back=back, frequency=freq, level=level)
+                    Flashcard(front=front, back=back, frequency=freq_str, level=level)
                 )
         return flashcards
     except Exception:
