@@ -94,7 +94,7 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
     random_freqs = get_random_frequencies(count=25)
     unique_randoms = [f for f in random_freqs if f not in spaced_freqs]
     selected = spaced_freqs + unique_randoms[: 25 - len(spaced_freqs)]
-    formula = "OR(" + ",".join([f"{{Frequency}} = \"{i}\"" for i in selected]) + ")"
+    formula = "OR(" + ",".join([f'{{Frequency}} = "{i}"' for i in selected]) + ")"
     params = {
         "maxRecords": 25,
         "filterByFormula": formula,
@@ -112,9 +112,12 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
             front = fields.get("french_word", "")
             back = fields.get("english_translation", {}).get("value", "")
             freq = str(fields.get("Frequency", ""))
+            level = (
+                str(fields.get("Level")) if fields.get("Level") is not None else None
+            )
             if front or back:
                 flashcards.append(
-                    Flashcard(front=front, back=back, frequency=freq)
+                    Flashcard(front=front, back=back, frequency=freq, level=level)
                 )
         return flashcards
     except Exception:
@@ -221,7 +224,7 @@ def log_forget(api_key: str, frequency: str, date_str: str) -> bool:
             resp = requests.patch(update_url, headers=headers, json=payload)
         else:
             payload = {
-                "fields": {"Date": date_str, "Frequency": frequency, "Level": 1}
+                "fields": {"Date": date_str, "Frequency": frequency, "Level": "1"}
             }
             current_url = SPACED_REP_URL
             resp = requests.post(SPACED_REP_URL, headers=headers, json=payload)
