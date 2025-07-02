@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Flashcards</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 40px;
+        }
+        #card-container {
+            position: relative;
+            width: 80vw;
+            height: 80vw;
+            max-width: 300px;
+            max-height: 300px;
+        }
+        .flashcard {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        .flashcard:not(.active) {
+            display: none;
+        }
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+        .side {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #333;
+            border-radius: 8px;
+            backface-visibility: hidden;
+            font-weight: bold;
+            overflow: hidden;
+            color: #333;
+            background: #fff;
+        }
+        .level-banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 16px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        .level-badge {
+            position: absolute;
+            top: 20px;
+            right: 8px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            border: 1px solid #333;
+            color: #333;
+        }
+        .front {
+            background: #fff;
+            color: #333;
+            font-size: 24pt;
+        }
+        .back {
+            transform: rotateY(180deg);
+            background: #fff;
+            color: #333;
+            font-size: 24pt;
+        }
+        .back-text {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            width: 100%;
+        }
+        .back-buttons {
+            margin-top: auto;
+            padding-bottom: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .back-buttons button {
+            font-size: 12pt;
+            padding: 5px 10px;
+            color: #333;
+            border-radius: 8px;
+        }
+        .back-buttons button:disabled {
+            background: #ccc;
+            color: #333;
+            cursor: default;
+        }
+        nav {
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            color: #333;
+            border: 1px solid #333;
+            background: #fff;
+            border-radius: 8px;
+        }
+        @media (max-width: 500px) {
+            #card-container {
+                width: 90vw;
+                height: 90vw;
+                max-width: 250px;
+                max-height: 250px;
+            }
+            button {
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% set level_colors = {
+        '1': '#FDEDEC',
+        '2': '#FDEBD0',
+        '3': '#FCF3CF',
+        '4': '#E9F7EF',
+        '5': '#E8F8F5'
+    } %}
+    <div id="card-container">
+        {% for card in flashcards %}
+        {% set lvl = card.level or '1' %}
+        {% set color = level_colors.get(lvl, '#FDEDEC') %}
+        <div class="flashcard{% if loop.index0 == 0 %} active{% endif %}" data-frequency="{{ card.frequency }}">
+            <div class="level-badge" style="background: {{ color }};">{{ lvl }}</div>
+            <div class="side front">
+                <div class="level-banner" style="background: {{ color }};"></div>
+                {{ card.front }}
+            </div>
+            <div class="side back">
+                <div class="level-banner" style="background: {{ color }};"></div>
+                <div class="back-text">{{ card.back }}</div>
+                <div class="back-buttons">
+                    <button type="button" class="back-action">I Got It</button>
+                    <button type="button" class="back-action">I Forgot It</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <nav>
+        <button id="prev">Previous</button>
+        <button id="next">Next</button>
+    </nav>
+<script>
+    const cards = document.querySelectorAll('.flashcard');
+    let current = 0;
+    const prev = document.getElementById('prev');
+    const next = document.getElementById('next');
+
+    function updateNav() {
+        prev.disabled = current === 0;
+        next.disabled = current === cards.length - 1;
+    }
+
+    function showCard(index) {
+        cards[current].classList.remove('active', 'flipped');
+        cards[current].style.display = 'none';
+        current = index;
+        cards[current].classList.add('active');
+        cards[current].style.display = 'block';
+        updateNav();
+    }
+
+    cards.forEach((card, i) => {
+        card.addEventListener('click', (e) => {
+            if (!e.target.closest('.back-action')) {
+                card.classList.toggle('flipped');
+            }
+        });
+        if (i !== 0) {
+            card.style.display = 'none';
+        }
+    });
+
+    document.querySelectorAll('.back-action').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            const card = btn.closest('.flashcard');
+            const actions = card.querySelectorAll('.back-action');
+            // Prevent multiple clicks for this card
+            if ([...actions].some(b => b.disabled)) {
+                return;
+            }
+
+            actions.forEach(b => b.disabled = true);
+
+            const freq = card.dataset.frequency;
+            if (btn.textContent.includes('I Got It')) {
+                fetch('/api/practice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ frequency: freq })
+                });
+            } else if (btn.textContent.includes('I Forgot It')) {
+                fetch('/api/forget', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ frequency: freq })
+                });
+            }
+        });
+    });
+
+    prev.addEventListener('click', () => {
+        if (current > 0) {
+            showCard(current - 1);
+        }
+    });
+
+    next.addEventListener('click', () => {
+        if (current < cards.length - 1) {
+            showCard(current + 1);
+        }
+    });
+
+    updateNav();
+</script>
+</body>
+</html>
