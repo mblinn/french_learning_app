@@ -75,6 +75,11 @@
             font-size: 12pt;
             padding: 5px 10px;
         }
+        .back-buttons button:disabled {
+            background: #ccc;
+            color: #666;
+            cursor: default;
+        }
         nav {
             margin-top: 20px;
         }
@@ -147,17 +152,24 @@
     document.querySelectorAll('.back-action').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
+
+            const card = btn.closest('.flashcard');
+            const actions = card.querySelectorAll('.back-action');
+            // Prevent multiple clicks for this card
+            if ([...actions].some(b => b.disabled)) {
+                return;
+            }
+
+            actions.forEach(b => b.disabled = true);
+
+            const freq = card.dataset.frequency;
             if (btn.textContent.includes('I Got It')) {
-                const card = btn.closest('.flashcard');
-                const freq = card.dataset.frequency;
                 fetch('/api/practice', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ frequency: freq })
                 });
             } else if (btn.textContent.includes('I Forgot It')) {
-                const card = btn.closest('.flashcard');
-                const freq = card.dataset.frequency;
                 fetch('/api/forget', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
