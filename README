@@ -1,18 +1,12 @@
 # French Learning App
 
-This repository contains a small Flask application. It exposes a single route returning "Hello, world!" and includes starter data for French flashcards. The `/flashcards` page presents these cards in an interactive layout where you can flip each card and move back and forth through the deck.
+This repository contains a small Flask application. Flashcards are fetched from
+Airtable and served via the `/api/flashcards` endpoint.
 
 ## Flashcard Data
 
-The `flashcards.py` module defines a simple `Flashcard` dataclass and an initial set of cards:
-
-- Le Chat → Cat
-- Le Chien → Dog
-- La Maison → House
-- Le Homme → Man
-- L'Amour → Love
-
-These cards can be imported by future parts of the application to present them to users.
+Flashcards are represented by a simple `Flashcard` dataclass containing the
+French word, its English translation, the card's frequency, and learning level.
 
 ## Local Development
 
