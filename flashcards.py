@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 @dataclass
 class Flashcard:
+    """Simple container for a flashcard."""
+
     front: str  # French word
     back: str  # English translation
     frequency: str | None = None
@@ -11,19 +13,20 @@ class Flashcard:
 
 # Initial set of flashcards
 flashcards = [
-    Flashcard(front="Le Chat", back="Cat"),
-    Flashcard(front="Le Chien", back="Dog"),
-    Flashcard(front="La Maison", back="House"),
-    Flashcard(front="Le Homme", back="Man"),
-    Flashcard(front="L'Amour", back="Love"),
-    Flashcard(front="Savoir", back="To Know"),
-    Flashcard(front="Parler", back="To Talk"),
-    Flashcard(front="L'Ordinateur", back="Computer"),
-    Flashcard(front="La Norriture", back="Food"),
-    Flashcard(front="Le Verre", back="Glass"),
-    Flashcard(front="L'ecole", back="School"),
-    Flashcard(front="Le nuit", back="Night"),
-    Flashcard(front="Bonjour", back="Hello (Day)"),
-    Flashcard(front="Bonsoir", back="Hello (Night)"),
-    Flashcard(front="Voir", back="To See"),
+    # Levels are repeated so the UI can demonstrate color coding for each one
+    Flashcard(front="Le Chat", back="Cat", level="1"),
+    Flashcard(front="Le Chien", back="Dog", level="2"),
+    Flashcard(front="La Maison", back="House", level="3"),
+    Flashcard(front="Le Homme", back="Man", level="4"),
+    Flashcard(front="L'Amour", back="Love", level="5"),
+    Flashcard(front="Savoir", back="To Know", level="1"),
+    Flashcard(front="Parler", back="To Talk", level="2"),
+    Flashcard(front="L'Ordinateur", back="Computer", level="3"),
+    Flashcard(front="La Norriture", back="Food", level="4"),
+    Flashcard(front="Le Verre", back="Glass", level="5"),
+    Flashcard(front="L'ecole", back="School", level="1"),
+    Flashcard(front="Le nuit", back="Night", level="2"),
+    Flashcard(front="Bonjour", back="Hello (Day)", level="3"),
+    Flashcard(front="Bonsoir", back="Hello (Night)", level="4"),
+    Flashcard(front="Voir", back="To See", level="5"),
 ]
