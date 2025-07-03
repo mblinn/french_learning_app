@@ -16,6 +16,10 @@ def flashcards_airtable_page():
         airtable_cards = []
     else:
         airtable_cards = fetch_flashcards(api_key)
+        print(
+            "Loaded flashcards:",
+            [f"{c.front}:{c.level}" for c in airtable_cards],
+        )
 
     return render_template(
         "flashcards_airtable.html",

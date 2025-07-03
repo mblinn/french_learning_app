@@ -98,6 +98,7 @@ def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> List[Tuple[int
             continue
 
     # Sort so that unit tests have deterministic output
+    print(f"Fetched spaced repetition levels: {sorted(results)}")
     return sorted(results)
 
 
@@ -128,9 +129,11 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
             fields = rec.get("fields", {})
             front = fields.get("french_word", "")
             back = fields.get("english_translation", {}).get("value", "")
-            freq_str = str(fields.get("Frequency", ""))
+            freq_raw = fields.get("Frequency", "")
+            # ``Frequency`` may come back as an int or float from Airtable.
+            freq_str = str(freq_raw)
             try:
-                freq_int = int(freq_str)
+                freq_int = int(float(freq_raw))
             except (TypeError, ValueError):
                 freq_int = None
             level = str(spaced_map.get(freq_int, 1)) if freq_int is not None else "1"
@@ -138,6 +141,7 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
                 flashcards.append(
                     Flashcard(front=front, back=back, frequency=freq_str, level=level)
                 )
+        print("Returning flashcards with levels:", [f"{c.front}:{c.level}" for c in flashcards])
         return flashcards
     except Exception:
         log_airtable_error("Error fetching flashcards from Airtable", url)

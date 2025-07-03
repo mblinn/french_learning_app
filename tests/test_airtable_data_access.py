@@ -153,6 +153,62 @@ class FetchFlashcardsTests(unittest.TestCase):
             [Flashcard(front="Bonjour", back="Hello", frequency="2", level="3")],
         )
 
+    @patch(
+        "airtable_data_access.get_random_frequencies", return_value=list(range(1, 26))
+    )
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value=[])
+    @patch("airtable_data_access.requests.get")
+    def test_handles_float_frequency(self, mock_get, mock_spaced, mock_rand):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "records": [
+                {
+                    "fields": {
+                        "french_word": "Bonjour",
+                        "english_translation": {"value": "Hello"},
+                        "Frequency": 2.0,
+                    }
+                }
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        cards = fetch_flashcards("TOKEN")
+
+        self.assertEqual(
+            cards,
+            [Flashcard(front="Bonjour", back="Hello", frequency="2.0", level="1")],
+        )
+
+    @patch(
+        "airtable_data_access.get_random_frequencies", return_value=list(range(1, 26))
+    )
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value=[(2, 4)])
+    @patch("airtable_data_access.requests.get")
+    def test_assigns_levels_with_float_frequency(self, mock_get, mock_spaced, mock_rand):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "records": [
+                {
+                    "fields": {
+                        "french_word": "Bonjour",
+                        "english_translation": {"value": "Hello"},
+                        "Frequency": 2.0,
+                    }
+                }
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        cards = fetch_flashcards("TOKEN")
+
+        self.assertEqual(
+            cards,
+            [Flashcard(front="Bonjour", back="Hello", frequency="2.0", level="4")],
+        )
+
     @patch("airtable_data_access.requests.post")
     @patch("airtable_data_access.requests.get")
     def test_log_practice_creates_row(self, mock_get, mock_post):
