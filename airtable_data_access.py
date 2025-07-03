@@ -3,11 +3,14 @@ import sys
 import traceback
 import random
 import json
+import logging
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
 SPACED_REP_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/spaced_rep"
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Flashcard:
@@ -25,11 +28,15 @@ def build_url(base_url: str, params: Optional[dict] = None) -> str:
 
 
 def log_airtable_error(message: str, url: str, payload: Optional[dict] = None) -> None:
-    """Print an error ``message`` with ``url`` and optional ``payload``."""
-    print(f"{message}. URL: {url}", file=sys.stderr)
+    """Log an Airtable error with context.
+
+    ``message`` is included with ``url`` and optional ``payload``. The current
+    exception stack is logged automatically via ``exc_info=True``.
+    """
+    msg = f"{message}. URL: {url}"
     if payload is not None:
-        print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
-    traceback.print_exc(file=sys.stderr)
+        msg += "\n" + json.dumps(payload, indent=2, sort_keys=True)
+    logger.error(msg, exc_info=True)
 
 
 def get_random_frequencies(count: int = 20, max_frequency: int = 200) -> List[int]:
@@ -97,8 +104,9 @@ def fetch_spaced_rep_frequencies(api_key: str, count: int = 5) -> List[Tuple[int
             log_airtable_error("Error fetching spaced repetition data", url)
             continue
 
-    # Sort so that unit tests have deterministic output
-    print(f"Fetched spaced repetition levels: {sorted(results)}")
+    # Sort so that unit tests have deterministic output and log the results for
+    # debugging purposes.
+    logger.info("Fetched spaced repetition levels: %s", sorted(results))
     return sorted(results)
 
 
@@ -141,7 +149,10 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
                 flashcards.append(
                     Flashcard(front=front, back=back, frequency=freq_str, level=level)
                 )
-        print("Returning flashcards with levels:", [f"{c.front}:{c.level}" for c in flashcards])
+        logger.info(
+            "Returning flashcards with levels: %s",
+            [f"{c.front}:{c.level}" for c in flashcards],
+        )
         return flashcards
     except Exception:
         log_airtable_error("Error fetching flashcards from Airtable", url)

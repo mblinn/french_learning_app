@@ -1,7 +1,6 @@
 import os
 import sys
 import unittest
-import io
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -405,15 +404,12 @@ class LogAirtableErrorTests(unittest.TestCase):
     def test_log_airtable_error_outputs_url_and_json(self):
         payload = {"a": 1, "b": 2}
         url = "https://example.com/path"
-        with patch("traceback.print_exc") as mock_trace, patch(
-            "sys.stderr", new_callable=io.StringIO
-        ) as fake_err:
+        with self.assertLogs("airtable_data_access", level="ERROR") as cm:
             log_airtable_error("Test error", url, payload)
-            output = fake_err.getvalue()
+        output = "\n".join(cm.output)
         self.assertIn("Test error. URL: https://example.com/path", output)
         self.assertIn('"a": 1', output)
         self.assertIn('"b": 2', output)
-        mock_trace.assert_called_once()
 
 
 if __name__ == "__main__":
