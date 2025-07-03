@@ -1,10 +1,13 @@
 import argparse
 import sys
+import logging
 from typing import List, Optional, Tuple
 
 import requests
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
+
+logger = logging.getLogger(__name__)
 
 
 def build_url(base_url: str, params: Optional[dict] = None) -> str:
@@ -49,7 +52,7 @@ def fetch_words(api_key: str, start: int, end: int) -> List[str]:
         resp = requests.get(AIRTABLE_URL, headers=headers, params=params)
         resp.raise_for_status()
     except Exception:
-        print(f"Error fetching records. URL: {url}", file=sys.stderr)
+        logger.error("Error fetching records. URL: %s", url, exc_info=True)
         raise
 
     data = resp.json()
@@ -80,14 +83,15 @@ def main(argv: List[str] | None = None) -> int:
     parser.add_argument("--api_key", help="Airtable API key")
     args = parser.parse_args(argv)
 
-    print(f"args.freq_range: {args.freq_range}")
+    logger.info("args.freq_range: %s", args.freq_range)
 
     start, end = parse_frequency_range(args.freq_range)
     words = fetch_words(args.api_key, start, end)
     for w in words:
-        print(w)
+        logger.info("%s", w)
     return 0
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     raise SystemExit(main())
