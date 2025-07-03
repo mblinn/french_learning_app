@@ -1,5 +1,8 @@
 # Contributor Guide
 
+## Dependencies
+Keep requirements.txt up to date with all requirements that are added.
+
 ## Style
 Wherever possible, pull logic out into unit testable functions and unit test them. 
 
