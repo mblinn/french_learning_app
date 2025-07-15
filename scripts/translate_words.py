@@ -35,7 +35,7 @@ def parse_frequency_range(range_str: str) -> Tuple[int, int]:
     return start, end
 
 
-def fetch_words(api_key: str, start: int, end: int) -> List[str]:
+def fetch_french_words(api_key: str, start: int, end: int) -> List[str]:
     """Fetch French words whose frequency is between ``start`` and ``end``.
 
     Returns a list of words ordered by frequency. Any records without a
@@ -68,18 +68,18 @@ def fetch_words(api_key: str, start: int, end: int) -> List[str]:
 
 def translate_word(api_key: str, word: str) -> str:
     """Translate ``word`` from English to French using GPT-4."""
-    openai.api_key = api_key
     try:
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {
                     "role": "user",
-                    "content": f"Translate {word} to french from english.",
+                    "content": f"Translate the French word '{word}' into English. Respond only with the English translation. If the word cannot be translated directly, respond with 'N/A'.",
                 }
             ],
         )
-        return response["choices"][0]["message"]["content"].strip()
+        return response.choices[0].message.content.strip()
     except Exception:
         logger.error("Error translating word '%s'", word, exc_info=True)
         raise
@@ -110,17 +110,17 @@ def main(argv: List[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     start, end = parse_frequency_range(args.freq_range)
-    words = fetch_words(args.api_key, start, end)
+    french_words = fetch_french_words(args.api_key, start, end)
 
     if args.translate:
         if not args.open_ai_api_key:
             parser.error("--open_ai_api_key is required when --translate is set")
-        translated = [translate_word(args.open_ai_api_key, w) for w in words]
-        for w in translated:
-            print(w)
+        translations = [(french_word, translate_word(args.open_ai_api_key, french_word)) for french_word in french_words]
+        for french_word, english_word in translations:
+            print(f"French: {french_word} -- English: {english_word}")
     else:
-        for word in words:
-            print(word)
+        for french_word in french_words:
+            print(french_word)
 
     return 0
 
