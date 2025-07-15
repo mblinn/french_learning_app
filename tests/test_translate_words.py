@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from scripts.translate_words import (
     parse_frequency_range,
-    fetch_words,
+    fetch_french_words,
     translate_word,
     AIRTABLE_URL,
 )
@@ -35,7 +35,7 @@ class FetchWordsTests(unittest.TestCase):
         }
         mock_get.return_value = resp
 
-        result = fetch_words("TOKEN", 1, 2)
+        result = fetch_french_words("TOKEN", 1, 2)
 
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
@@ -48,14 +48,19 @@ class FetchWordsTests(unittest.TestCase):
 
 
 class TranslateWordTests(unittest.TestCase):
-    @patch("scripts.translate_words.openai.ChatCompletion.create")
-    def test_translate_word(self, mock_create):
-        mock_create.return_value = {
-            "choices": [{"message": {"content": "bonjour"}}]
-        }
+    @patch("scripts.translate_words.openai.OpenAI")
+    def test_translate_word(self, mock_openai):
+        # Mock the client and its chat.completions.create method
+        mock_client = MagicMock()
+        mock_openai.return_value = mock_client
+        mock_completion = MagicMock()
+        mock_completion.choices = [MagicMock(message=MagicMock(content="bonjour"))]
+        mock_client.chat.completions.create.return_value = mock_completion
+
         result = translate_word("OPENAI", "hello")
 
-        mock_create.assert_called_once()
+        mock_openai.assert_called_once_with(api_key="OPENAI")
+        mock_client.chat.completions.create.assert_called_once()
         self.assertEqual(result, "bonjour")
 
 
