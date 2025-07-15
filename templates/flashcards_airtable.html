@@ -163,6 +163,17 @@
             </div>
         </div>
         {% endfor %}
+        <div class="flashcard" id="new-set-card">
+            <div class="side front">
+                Fetch new set?
+            </div>
+            <div class="side back">
+                <div class="back-text"></div>
+                <div class="back-buttons">
+                    <button type="button" id="fetch-new-set">Fetch New Set</button>
+                </div>
+            </div>
+        </div>
     </div>
     <nav>
         <button id="prev">Previous</button>
@@ -240,6 +251,14 @@
             showCard(current + 1);
         }
     });
+
+    const fetchBtn = document.getElementById('fetch-new-set');
+    if (fetchBtn) {
+        fetchBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.location.reload();
+        });
+    }
 
     updateNav();
 </script>
