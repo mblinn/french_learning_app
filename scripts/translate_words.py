@@ -83,12 +83,10 @@ def main(argv: List[str] | None = None) -> int:
     parser.add_argument("--api_key", help="Airtable API key")
     args = parser.parse_args(argv)
 
-    logger.info("args.freq_range: %s", args.freq_range)
-
     start, end = parse_frequency_range(args.freq_range)
     words = fetch_words(args.api_key, start, end)
-    for w in words:
-        logger.info("%s", w)
+    for word in words:
+        print(word)
     return 0
 
 
