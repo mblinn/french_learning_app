@@ -1,7 +1,12 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from scripts.translate_words import parse_frequency_range, fetch_words, AIRTABLE_URL
+from scripts.translate_words import (
+    parse_frequency_range,
+    fetch_words,
+    translate_word,
+    AIRTABLE_URL,
+)
 
 
 class ParseFrequencyRangeTests(unittest.TestCase):
@@ -40,6 +45,18 @@ class FetchWordsTests(unittest.TestCase):
         params = kwargs["params"]
         self.assertIn("filterByFormula", params)
         self.assertEqual(result, ["bonjour", "chat"])
+
+
+class TranslateWordTests(unittest.TestCase):
+    @patch("scripts.translate_words.openai.ChatCompletion.create")
+    def test_translate_word(self, mock_create):
+        mock_create.return_value = {
+            "choices": [{"message": {"content": "bonjour"}}]
+        }
+        result = translate_word("OPENAI", "hello")
+
+        mock_create.assert_called_once()
+        self.assertEqual(result, "bonjour")
 
 
 if __name__ == "__main__":
