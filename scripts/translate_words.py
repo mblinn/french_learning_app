@@ -4,6 +4,7 @@ import logging
 from typing import List, Optional, Tuple
 
 import requests
+import openai
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
 
@@ -65,6 +66,25 @@ def fetch_words(api_key: str, start: int, end: int) -> List[str]:
     return words
 
 
+def translate_word(api_key: str, word: str) -> str:
+    """Translate ``word`` from English to French using GPT-4."""
+    openai.api_key = api_key
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Translate {word} to french from english.",
+                }
+            ],
+        )
+        return response["choices"][0]["message"]["content"].strip()
+    except Exception:
+        logger.error("Error translating word '%s'", word, exc_info=True)
+        raise
+
+
 def main(argv: List[str] | None = None) -> int:
     """Entry point for the ``translate_words`` command.
 
@@ -81,12 +101,27 @@ def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Fetch French words from Airtable")
     parser.add_argument("--freq_range", help="frequency range, e.g. 1-20")
     parser.add_argument("--api_key", help="Airtable API key")
+    parser.add_argument(
+        "--translate",
+        action="store_true",
+        help="translate fetched words using OpenAI",
+    )
+    parser.add_argument("--open_ai_api_key", help="OpenAI API key", default=None)
     args = parser.parse_args(argv)
 
     start, end = parse_frequency_range(args.freq_range)
     words = fetch_words(args.api_key, start, end)
-    for word in words:
-        print(word)
+
+    if args.translate:
+        if not args.open_ai_api_key:
+            parser.error("--open_ai_api_key is required when --translate is set")
+        translated = [translate_word(args.open_ai_api_key, w) for w in words]
+        for w in translated:
+            print(w)
+    else:
+        for word in words:
+            print(word)
+
     return 0
 
 
