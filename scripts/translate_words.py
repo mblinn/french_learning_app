@@ -15,11 +15,11 @@ IMAGE_DIR = "/Users/michaelbevilacqua-linn/FrenchImages"
 BASE_PROMPT = (
     "Act as a prompt engineer creating a prompt for an image generation model. "
     "You will be given a word and will need to generate a prompt for it. Use the "
-    "following as the base prompt.\n\nCreate a simple line sketch of a #WORD#. "
-    "Make it memorable, but keep it as minimal as possible. Make it "
-    "look as if it were drawn in colored pencils, using different realistic colors "
-    "as appropriate. Do not include pictures of the colored pencils in the generated "
-    "images.\n\nFor simple nouns, replace #WORD# with the word.\n\nFor verbs, "
+    "following as the base prompt.\n\nCreate a simple colorful line sketch of #WORD# "
+    "The drawings should have a soft, textured look, with visible strokes that vary in intensity. " 
+    "You should be able to see individual lines or hatching marks, giving them a sketchbook feel. "
+    "\n\nFor simple nouns, replace #WORD# with " 
+    " the letter 'a' followed by the word.\n\nFor verbs, "
     "replace #WORD# with a description that demonstrates the action. Examples:\n\n"
     "run -> replace #WORD# with the phrase \"a running man\"\njump -> replace "
     "#WORD# with the phrase \"a jumping woman\"\nthrow -> replace #WORD# with "
@@ -133,14 +133,14 @@ def generate_image(api_key: str, english_word: str, image_dir: str = IMAGE_DIR) 
     prompt = build_image_prompt(api_key, english_word)
 
     try:
-        response = openai.Image.create(
+        client = openai.OpenAI(api_key=api_key)
+        response = client.images.generate(
             prompt=prompt,
             n=1,
             size="1024x1024",
             model="dall-e-3",
-            api_key=api_key,
         )
-        image_url = response["data"][0]["url"]
+        image_url = response.data[0].url
 
         img_resp = requests.get(image_url)
         img_resp.raise_for_status()
