@@ -16,7 +16,7 @@ BASE_PROMPT = (
     "Act as a prompt engineer creating a prompt for an image generation model. "
     "You will be given a word and will need to generate a prompt for it. Use the "
     "following as the base prompt.\n\nCreate a simple line sketch of a #WORD#. "
-    "Make it funny and memorable, but keep it as minimal as possible. Make it "
+    "Make it memorable, but keep it as minimal as possible. Make it "
     "look as if it were drawn in colored pencils, using different realistic colors "
     "as appropriate. Do not include pictures of the colored pencils in the generated "
     "images.\n\nFor simple nouns, replace #WORD# with the word.\n\nFor verbs, "
