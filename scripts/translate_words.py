@@ -11,6 +11,25 @@ AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
 
 IMAGE_DIR = "/Users/michaelbevilacqua-linn/FrenchImages"
 
+# Base prompt for GPT-4 to generate the image prompt
+BASE_PROMPT = (
+    "Act as a prompt engineer creating a prompt for an image generation model. "
+    "You will be given a word and will need to generate a prompt for it. Use the "
+    "following as the base prompt.\n\nCreate a simple line sketch of a #WORD#. "
+    "Make it funny and memorable, but keep it as minimal as possible. Make it "
+    "look as if it were drawn in colored pencils, using different realistic colors "
+    "as appropriate. Do not include pictures of the colored pencils in the generated "
+    "images.\n\nFor simple nouns, replace #WORD# with the word.\n\nFor verbs, "
+    "replace #WORD# with a description that demonstrates the action. Examples:\n\n"
+    "run -> replace #WORD# with the phrase \"a running man\"\njump -> replace "
+    "#WORD# with the phrase \"a jumping woman\"\nthrow -> replace #WORD# with "
+    "the phrase \"a ball being thrown\"\n\nFor abstract concepts, think and "
+    "come up with an image that represents the concept. Examples:\n\nlove -> "
+    "replace #WORD# with a heart\nhate -> replace #WORD# with two people "
+    "arguing\ntime -> replace #WORD# with a clock\n\nThe word is: "
+    "#INITIAL_REPLACED_WORD#"
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -88,6 +107,21 @@ def translate_word(api_key: str, word: str) -> str:
         raise
 
 
+def build_image_prompt(api_key: str, word: str) -> str:
+    """Return a GPT-4 generated image prompt for ``word``."""
+    try:
+        client = openai.OpenAI(api_key=api_key)
+        prompt_request = BASE_PROMPT.replace("#INITIAL_REPLACED_WORD#", word)
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt_request}],
+        )
+        return response.choices[0].message.content.strip()
+    except Exception:
+        logger.error("Error generating image prompt for '%s'", word, exc_info=True)
+        raise
+
+
 def generate_image(api_key: str, english_word: str, image_dir: str = IMAGE_DIR) -> str:
     """Generate an image for ``english_word`` using OpenAI and save it to ``image_dir``.
 
@@ -96,22 +130,17 @@ def generate_image(api_key: str, english_word: str, image_dir: str = IMAGE_DIR) 
     downloaded and written to ``image_dir``. The path to the saved image is
     returned.
     """
-    prompt = (
-        "Create a simple line sketch of a #WORD#. Make it funny and memorable, "
-        "but keep it as minimal as possible. Make it look as if it were drawn in "
-        "colored pencils, using different realistic colors as appropriate."
-        "Do not include pictures of the colored pencils in the generated images."
-    ).replace("#WORD#", english_word)
+    prompt = build_image_prompt(api_key, english_word)
 
     try:
-        client = openai.OpenAI(api_key=api_key)
-        response = client.images.generate(
+        response = openai.Image.create(
             prompt=prompt,
             n=1,
             size="1024x1024",
             model="dall-e-3",
+            api_key=api_key,
         )
-        image_url = response.data[0].url
+        image_url = response["data"][0]["url"]
 
         img_resp = requests.get(image_url)
         img_resp.raise_for_status()

@@ -66,11 +66,18 @@ class TranslateWordTests(unittest.TestCase):
 
 
 class GenerateImageTests(unittest.TestCase):
+    @patch("scripts.translate_words.openai.OpenAI")
     @patch("scripts.translate_words.openai.Image.create")
     @patch("scripts.translate_words.requests.get")
     @patch("scripts.translate_words.os.makedirs")
-    def test_generate_image(self, mock_makedirs, mock_get, mock_create):
+    def test_generate_image(self, mock_makedirs, mock_get, mock_create, mock_openai):
         mock_create.return_value = {"data": [{"url": "http://example.com/img.png"}]}
+
+        mock_client = MagicMock()
+        mock_openai.return_value = mock_client
+        completion = MagicMock()
+        completion.choices = [MagicMock(message=MagicMock(content="prompt"))]
+        mock_client.chat.completions.create.return_value = completion
 
         img_resp = MagicMock()
         img_resp.raise_for_status.return_value = None
@@ -83,6 +90,8 @@ class GenerateImageTests(unittest.TestCase):
         mock_create.assert_called_once()
         mock_get.assert_called_once_with("http://example.com/img.png")
         mock_makedirs.assert_called_once()
+        mock_openai.assert_called_once_with(api_key="OPENAI")
+        mock_client.chat.completions.create.assert_called_once()
         m_open.assert_called_once()
         self.assertTrue(path.endswith("cat.png"))
 
