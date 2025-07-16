@@ -99,21 +99,19 @@ def generate_image(api_key: str, english_word: str, image_dir: str = IMAGE_DIR) 
     prompt = (
         "Create a simple line sketch of a #WORD#. Make it funny and memorable, "
         "but keep it as minimal as possible. Make it look as if it were drawn in "
-        "colored pencils, using different realistic colors as appropriate. For "
-        "instance, if you were drawing a tree, use brown for the trunk and green "
-        "for the leaves. If you were drawing a flower, use colors for the petals, "
-        "and green for the stem. If you were drawing a taco, use yellow for the "
-        "shell, and white for the cheese."
+        "colored pencils, using different realistic colors as appropriate."
+        "Do not include pictures of the colored pencils in the generated images."
     ).replace("#WORD#", english_word)
 
     try:
-        response = openai.Image.create(
+        client = openai.OpenAI(api_key=api_key)
+        response = client.images.generate(
             prompt=prompt,
             n=1,
-            size="512x512",
-            model="gpt-image-1",
+            size="1024x1024",
+            model="dall-e-3",
         )
-        image_url = response["data"][0]["url"]
+        image_url = response.data[0].url
 
         img_resp = requests.get(image_url)
         img_resp.raise_for_status()
