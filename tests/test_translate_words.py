@@ -5,6 +5,7 @@ from scripts.translate_words import (
     parse_frequency_range,
     fetch_french_words,
     translate_word,
+    generate_image,
     AIRTABLE_URL,
 )
 
@@ -62,6 +63,28 @@ class TranslateWordTests(unittest.TestCase):
         mock_openai.assert_called_once_with(api_key="OPENAI")
         mock_client.chat.completions.create.assert_called_once()
         self.assertEqual(result, "bonjour")
+
+
+class GenerateImageTests(unittest.TestCase):
+    @patch("scripts.translate_words.openai.Image.create")
+    @patch("scripts.translate_words.requests.get")
+    @patch("scripts.translate_words.os.makedirs")
+    def test_generate_image(self, mock_makedirs, mock_get, mock_create):
+        mock_create.return_value = {"data": [{"url": "http://example.com/img.png"}]}
+
+        img_resp = MagicMock()
+        img_resp.raise_for_status.return_value = None
+        img_resp.content = b"imagebytes"
+        mock_get.return_value = img_resp
+
+        with patch("builtins.open", new_callable=unittest.mock.mock_open()) as m_open:
+            path = generate_image("OPENAI", "cat")
+
+        mock_create.assert_called_once()
+        mock_get.assert_called_once_with("http://example.com/img.png")
+        mock_makedirs.assert_called_once()
+        m_open.assert_called_once()
+        self.assertTrue(path.endswith("cat.png"))
 
 
 if __name__ == "__main__":

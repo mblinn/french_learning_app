@@ -2,11 +2,14 @@ import argparse
 import sys
 import logging
 from typing import List, Optional, Tuple
+import os
 
 import requests
 import openai
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
+
+IMAGE_DIR = "/Users/michaelbevilacqua-linn/FrenchImages"
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +88,47 @@ def translate_word(api_key: str, word: str) -> str:
         raise
 
 
+def generate_image(api_key: str, english_word: str, image_dir: str = IMAGE_DIR) -> str:
+    """Generate an image for ``english_word`` using OpenAI and save it to ``image_dir``.
+
+    The function sends a prompt to the OpenAI image generation API requesting a
+    minimal colored pencil sketch of ``english_word``. The resulting image is
+    downloaded and written to ``image_dir``. The path to the saved image is
+    returned.
+    """
+    prompt = (
+        "Create a simple line sketch of a #WORD#. Make it funny and memorable, "
+        "but keep it as minimal as possible. Make it look as if it were drawn in "
+        "colored pencils, using different realistic colors as appropriate. For "
+        "instance, if you were drawing a tree, use brown for the trunk and green "
+        "for the leaves. If you were drawing a flower, use colors for the petals, "
+        "and green for the stem. If you were drawing a taco, use yellow for the "
+        "shell, and white for the cheese."
+    ).replace("#WORD#", english_word)
+
+    try:
+        response = openai.Image.create(
+            prompt=prompt,
+            n=1,
+            size="512x512",
+            model="gpt-image-1",
+        )
+        image_url = response["data"][0]["url"]
+
+        img_resp = requests.get(image_url)
+        img_resp.raise_for_status()
+
+        os.makedirs(image_dir, exist_ok=True)
+        file_name = f"{english_word.replace(' ', '_')}.png"
+        file_path = os.path.join(image_dir, file_name)
+        with open(file_path, "wb") as f:
+            f.write(img_resp.content)
+        return file_path
+    except Exception:
+        logger.error("Error generating image for '%s'", english_word, exc_info=True)
+        raise
+
+
 def main(argv: List[str] | None = None) -> int:
     """Entry point for the ``translate_words`` command.
 
@@ -106,21 +150,40 @@ def main(argv: List[str] | None = None) -> int:
         action="store_true",
         help="translate fetched words using OpenAI",
     )
+    parser.add_argument(
+        "--generate_image",
+        action="store_true",
+        help="generate an illustrative image for each word using OpenAI",
+    )
     parser.add_argument("--open_ai_api_key", help="OpenAI API key", default=None)
     args = parser.parse_args(argv)
 
     start, end = parse_frequency_range(args.freq_range)
     french_words = fetch_french_words(args.api_key, start, end)
 
+    need_openai = args.translate or args.generate_image
+    if need_openai and not args.open_ai_api_key:
+        parser.error("--open_ai_api_key is required when --translate or --generate_image is set")
+
+    if need_openai:
+        translations = [
+            (french_word, translate_word(args.open_ai_api_key, french_word))
+            for french_word in french_words
+        ]
+    else:
+        translations = [(french_word, None) for french_word in french_words]
+
     if args.translate:
-        if not args.open_ai_api_key:
-            parser.error("--open_ai_api_key is required when --translate is set")
-        translations = [(french_word, translate_word(args.open_ai_api_key, french_word)) for french_word in french_words]
         for french_word, english_word in translations:
             print(f"French: {french_word} -- English: {english_word}")
     else:
-        for french_word in french_words:
+        for french_word, _ in translations:
             print(french_word)
+
+    if args.generate_image:
+        for _, english_word in translations:
+            if english_word:
+                generate_image(args.open_ai_api_key, english_word)
 
     return 0
 
