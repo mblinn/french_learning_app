@@ -1,0 +1,19 @@
+Act as a prompt engineer creating a prompt for an image generation model. You will be given a word and will need to generate a prompt for it. Use the following as the base prompt.
+
+Create a simple colorful line sketch of #WORD# The drawings should have a soft, textured look, with visible strokes that vary in intensity. You should be able to see individual lines or hatching marks, giving them a sketchbook feel.
+
+For simple nouns, replace #WORD# with  the letter 'a' followed by the word.
+
+For verbs, replace #WORD# with a description that demonstrates the action. Examples:
+
+run -> replace #WORD# with the phrase "a running man"
+jump -> replace #WORD# with the phrase "a jumping woman"
+throw -> replace #WORD# with the phrase "a ball being thrown"
+
+For abstract concepts, think and come up with an image that represents the concept. Examples:
+
+love -> replace #WORD# with a heart
+hate -> replace #WORD# with two people arguing
+time -> replace #WORD# with a clock
+
+The word is: {{ word }}
