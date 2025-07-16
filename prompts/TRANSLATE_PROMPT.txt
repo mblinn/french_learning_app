@@ -1,0 +1,1 @@
+Translate the French word '{{ word }}' into English. Respond only with the English translation. If the word cannot be translated directly, respond with 'N/A'.

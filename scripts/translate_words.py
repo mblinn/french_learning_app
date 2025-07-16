@@ -6,29 +6,26 @@ import os
 
 import requests
 import openai
+from jinja2 import Template
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
 
 IMAGE_DIR = "/Users/michaelbevilacqua-linn/FrenchImages"
 
-# Base prompt for GPT-4 to generate the image prompt
-BASE_PROMPT = (
-    "Act as a prompt engineer creating a prompt for an image generation model. "
-    "You will be given a word and will need to generate a prompt for it. Use the "
-    "following as the base prompt.\n\nCreate a simple colorful line sketch of #WORD# "
-    "The drawings should have a soft, textured look, with visible strokes that vary in intensity. " 
-    "You should be able to see individual lines or hatching marks, giving them a sketchbook feel. "
-    "\n\nFor simple nouns, replace #WORD# with " 
-    " the letter 'a' followed by the word.\n\nFor verbs, "
-    "replace #WORD# with a description that demonstrates the action. Examples:\n\n"
-    "run -> replace #WORD# with the phrase \"a running man\"\njump -> replace "
-    "#WORD# with the phrase \"a jumping woman\"\nthrow -> replace #WORD# with "
-    "the phrase \"a ball being thrown\"\n\nFor abstract concepts, think and "
-    "come up with an image that represents the concept. Examples:\n\nlove -> "
-    "replace #WORD# with a heart\nhate -> replace #WORD# with two people "
-    "arguing\ntime -> replace #WORD# with a clock\n\nThe word is: "
-    "#INITIAL_REPLACED_WORD#"
-)
+# Directory that stores all prompt templates
+PROMPTS_DIR = os.path.join(os.path.dirname(__file__), "..", "prompts")
+
+
+def _load_prompt_template(filename: str) -> Template:
+    """Return a Jinja2 template loaded from the prompts directory."""
+    path = os.path.join(PROMPTS_DIR, filename)
+    with open(path, "r", encoding="utf-8") as f:
+        return Template(f.read())
+
+
+# Templates for the OpenAI prompts
+BASE_PROMPT_TEMPLATE = _load_prompt_template("BASE_PROMPT.txt")
+TRANSLATE_PROMPT_TEMPLATE = _load_prompt_template("TRANSLATE_PROMPT.txt")
 
 logger = logging.getLogger(__name__)
 
@@ -92,14 +89,10 @@ def translate_word(api_key: str, word: str) -> str:
     """Translate ``word`` from English to French using GPT-4."""
     try:
         client = openai.OpenAI(api_key=api_key)
+        prompt = TRANSLATE_PROMPT_TEMPLATE.render(word=word)
         response = client.chat.completions.create(
             model="gpt-4",
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Translate the French word '{word}' into English. Respond only with the English translation. If the word cannot be translated directly, respond with 'N/A'.",
-                }
-            ],
+            messages=[{"role": "user", "content": prompt}],
         )
         return response.choices[0].message.content.strip()
     except Exception:
@@ -111,7 +104,7 @@ def build_image_prompt(api_key: str, word: str) -> str:
     """Return a GPT-4 generated image prompt for ``word``."""
     try:
         client = openai.OpenAI(api_key=api_key)
-        prompt_request = BASE_PROMPT.replace("#INITIAL_REPLACED_WORD#", word)
+        prompt_request = BASE_PROMPT_TEMPLATE.render(word=word)
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt_request}],
@@ -133,14 +126,13 @@ def generate_image(api_key: str, english_word: str, image_dir: str = IMAGE_DIR) 
     prompt = build_image_prompt(api_key, english_word)
 
     try:
-        client = openai.OpenAI(api_key=api_key)
-        response = client.images.generate(
+        response = openai.Image.create(
             prompt=prompt,
             n=1,
             size="1024x1024",
             model="dall-e-3",
         )
-        image_url = response.data[0].url
+        image_url = response["data"][0]["url"]
 
         img_resp = requests.get(image_url)
         img_resp.raise_for_status()
