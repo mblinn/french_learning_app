@@ -234,7 +234,7 @@ def upload_image_to_airtable(api_key: str, image_path: str) -> str:
 
 
 def update_word_record(
-    api_key: str, record_id: str, translation: dict
+    api_key: str, record_id: str, translation: dict, attachment_id: str | None = None
 ) -> None:
     """Update ``record_id`` in Airtable with ``translation`` and ``attachment_id``.
 
@@ -250,6 +250,9 @@ def update_word_record(
         "gender": translation.get("gender"),
         "part_of_speech": translation.get("part_of_speech"),
     }
+
+    if attachment_id:
+        fields["image"] = [{"id": attachment_id}]
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     url = f"{AIRTABLE_URL}/{record_id}"

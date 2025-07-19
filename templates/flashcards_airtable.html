@@ -156,8 +156,14 @@
             <div class="side front">
                 <div class="level-banner" style="background: {{ color }};"></div>
                 <div>{{ card.front }}</div>
-                <div style="font-size: 12pt; text-align: center;">
-                    <div>{{ card.gender }} {{ card.part_of_speech }}</div>
+                <div style="font-size: 12pt; text-align: center; margin-top: 10px;">
+                    <div>
+                        {% if card.gender and card.gender != 'N/A' %}
+                            {{ card.gender }}{% if card.part_of_speech %} {{ card.part_of_speech }}{% endif %}
+                        {% else %}
+                            {{ card.part_of_speech or '' }}
+                        {% endif %}
+                    </div>
                     <div>{{ card.example_1 }}</div>
                     <div>{{ card.example_2 }}</div>
                 </div>
