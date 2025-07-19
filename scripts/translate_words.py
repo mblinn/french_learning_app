@@ -55,11 +55,12 @@ def parse_frequency_range(range_str: str) -> Tuple[int, int]:
     return start, end
 
 
-def fetch_french_words(api_key: str, start: int, end: int) -> List[str]:
+def fetch_french_words(api_key: str, start: int, end: int) -> List[Tuple[str, str]]:
     """Fetch French words whose frequency is between ``start`` and ``end``.
 
-    Returns a list of words ordered by frequency. Any records without a
-    ``french_word`` field are ignored.
+    Returns a list of ``(record_id, word)`` tuples ordered by frequency. Any
+    records without a ``french_word`` field are ignored. The record ID is
+    returned so that callers can update the Airtable row with additional data.
     """
     if not api_key:
         raise ValueError("API key is required")
@@ -84,12 +85,13 @@ def fetch_french_words(api_key: str, start: int, end: int) -> List[str]:
         raise
 
     data = resp.json()
-    words: List[str] = []
+    words: List[Tuple[str, str]] = []
     for rec in data.get("records", []):
         fields = rec.get("fields", {})
         word = fields.get("french_word")
-        if word:
-            words.append(word)
+        rec_id = rec.get("id")
+        if word and rec_id:
+            words.append((rec_id, word))
     return words
 
 
@@ -181,6 +183,58 @@ def generate_image(api_key: str, english_word: str, image_dir: str = IMAGE_DIR) 
         raise
 
 
+def upload_image_to_airtable(api_key: str, image_path: str) -> str:
+    """Upload ``image_path`` to Airtable and return the attachment ID.
+
+    Parameters
+    ----------
+    api_key:
+        Airtable API key.
+    image_path:
+        Local path to the image file.
+
+    Returns
+    -------
+    str
+        The attachment ID returned by Airtable.
+    """
+    headers = {"Authorization": f"Bearer {api_key}"}
+    url = "https://api.airtable.com/v0/bases/applW7zbiH23gDDCK/attachments"
+    with open(image_path, "rb") as f:
+        files = {"file": (os.path.basename(image_path), f, "image/png")}
+        resp = requests.post(url, headers=headers, files=files)
+    resp.raise_for_status()
+    data = resp.json()
+    return data.get("id")
+
+
+def update_word_record(
+    api_key: str, record_id: str, translation: dict, attachment_id: str | None
+) -> None:
+    """Update ``record_id`` in Airtable with ``translation`` and ``attachment_id``.
+
+    ``translation`` is a dictionary returned by :func:`translate_word`. The
+    relevant fields are mapped to Airtable columns according to the project
+    schema. ``attachment_id`` may be ``None`` if image upload failed, in which
+    case the image field is left unchanged.
+    """
+    fields = {
+        "english_word": translation.get("english_word"),
+        "example_1": translation.get("sentence_one"),
+        "example_2": translation.get("sentence_two"),
+        "gender": translation.get("gender"),
+        "part_of_speech": translation.get("part_of_speech"),
+    }
+    if attachment_id:
+        fields["image"] = [{"id": attachment_id}]
+
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    url = f"{AIRTABLE_URL}/{record_id}"
+    payload = {"fields": fields}
+    resp = requests.patch(url, headers=headers, json=payload)
+    resp.raise_for_status()
+
+
 def main(argv: List[str] | None = None) -> int:
     """Entry point for the ``translate_words`` command.
 
@@ -188,12 +242,19 @@ def main(argv: List[str] | None = None) -> int:
     --------
     Basic usage::
 
-        python -m scripts.translate_words freq_range = 1-20
+        python -m scripts.translate_words 1-20
 
-    The script will use environment variables OPENAI_KEY and AIRTABLE_API_KEY.
+    Use the ``--upload-data`` flag to write the generated metadata and image
+    back to Airtable. The script relies on the OPENAI_KEY and AIRTABLE_API_KEY
+    environment variables for credentials.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("freq_range", help="Frequency range in the form start-end")
+    parser.add_argument(
+        "--upload-data",
+        action="store_true",
+        help="Upload translated data and images back to Airtable",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -216,15 +277,25 @@ def main(argv: List[str] | None = None) -> int:
     # Fetch range of words from Airtable and translate each
     try:
         french_words = fetch_french_words(airtable_key, start, end)
-        translations = [translate_word(openai_key, w) for w in french_words]
+        translations = [
+            (rec_id, translate_word(openai_key, word)) for rec_id, word in french_words
+        ]
     except Exception as exc:
         print(f"Error fetching words: {exc}", file=sys.stderr)
         return 1
 
     # Print the translation information and then generate images
-    for data in translations:
+    for rec_id, data in translations:
         print(json.dumps(data, indent=2, ensure_ascii=False))
-        generate_image(openai_key, data["english_word"])
+        image_path = generate_image(openai_key, data["english_word"])
+        if args.upload_data:
+            try:
+                attachment_id = upload_image_to_airtable(airtable_key, image_path)
+                update_word_record(airtable_key, rec_id, data, attachment_id)
+            except Exception as exc:
+                logger.error(
+                    "Error uploading data for record %s: %s", rec_id, str(exc), exc_info=True
+                )
 
     return 0
 
