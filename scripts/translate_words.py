@@ -3,6 +3,7 @@ import sys
 import logging
 from typing import List, Optional, Tuple
 import os
+import json
 
 import requests
 import openai
@@ -92,19 +93,35 @@ def fetch_french_words(api_key: str, start: int, end: int) -> List[str]:
     return words
 
 
-def translate_word(api_key: str, word: str) -> str:
-    """Translate ``word`` from French to English using GPT-4."""
+def _parse_translation_json(content: str) -> dict:
+    """Return the translation data parsed from ``content``.
+
+    ``content`` is expected to be a JSON string. If parsing fails an error is
+    logged and the exception is re-raised so that callers know something went
+    wrong.
+    """
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON from translation: %s", content)
+        raise
+
+
+def translate_word(api_key: str, word: str) -> dict:
+    """Translate ``word`` and return rich metadata from GPT-4."""
     if not api_key:
         raise ValueError("API key is required")
-    """Translate ``word`` from French to English using GPT-4."""
+
     try:
         client = openai.OpenAI(api_key=api_key)
         prompt = TRANSLATE_PROMPT_TEMPLATE.render(word=word)
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
         )
-        return response.choices[0].message.content.strip()
+        raw = response.choices[0].message.content.strip()
+        return _parse_translation_json(raw)
     except Exception:
         logger.error("Error translating word '%s'", word, exc_info=True)
         raise
@@ -196,17 +213,18 @@ def main(argv: List[str] | None = None) -> int:
         print("Error: AIRTABLE_API_KEY environment variable is not set", file=sys.stderr)
         return 1
 
-    # Fetch range of words from airtable base and translate each
+    # Fetch range of words from Airtable and translate each
     try:
         french_words = fetch_french_words(airtable_key, start, end)
-        translations = [(translate_word(openai_key, french_word), french_word) for french_word in french_words]
+        translations = [translate_word(openai_key, w) for w in french_words]
     except Exception as exc:
         print(f"Error fetching words: {exc}", file=sys.stderr)
         return 1
 
-    # Generate images for each English word
-    for _, english_word in translations:
-        generate_image(openai_key, english_word)
+    # Print the translation information and then generate images
+    for data in translations:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        generate_image(openai_key, data["english_word"])
 
     return 0
 
