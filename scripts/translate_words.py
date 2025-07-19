@@ -212,8 +212,8 @@ def upload_image_to_airtable(api_key: str, image_path: str) -> str:
         buffer.seek(0)
         files = {"file": (os.path.basename(image_path), buffer, "image/png")}
     
-    # Note: The base ID is already included in AIRTABLE_URL, so we don't need to add it again
-    url = f"{AIRTABLE_URL}/attachments"
+    # Use the correct Airtable attachments endpoint
+    url = "https://api.airtable.com/v0/bases/applW7zbiH23gDDCK/attachments"
     with open(image_path, "rb") as f:
         files = {"file": (os.path.basename(image_path), f, "image/png")}
         resp = requests.post(url, headers=headers, files=files)
