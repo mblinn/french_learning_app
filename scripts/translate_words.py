@@ -201,7 +201,6 @@ def upload_image_to_airtable(api_key: str, image_path: str) -> str:
         The attachment ID returned by Airtable.
     """
     headers = {"Authorization": f"Bearer {api_key}"}
-    url = "https://api.airtable.com/v0/bases/applW7zbiH23gDDCK/attachments"
 
     # Resize the image to 150x150 before uploading. Using a BytesIO buffer avoids
     # writing an intermediate file to disk, which keeps the function simple and
@@ -212,6 +211,11 @@ def upload_image_to_airtable(api_key: str, image_path: str) -> str:
         resized.save(buffer, format="PNG")
         buffer.seek(0)
         files = {"file": (os.path.basename(image_path), buffer, "image/png")}
+    
+    # Note: The base ID is already included in AIRTABLE_URL, so we don't need to add it again
+    url = f"{AIRTABLE_URL}/attachments"
+    with open(image_path, "rb") as f:
+        files = {"file": (os.path.basename(image_path), f, "image/png")}
         resp = requests.post(url, headers=headers, files=files)
 
     resp.raise_for_status()
