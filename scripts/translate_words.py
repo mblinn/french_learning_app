@@ -116,7 +116,7 @@ def translate_word(api_key: str, word: str) -> dict:
         client = openai.OpenAI(api_key=api_key)
         prompt = TRANSLATE_PROMPT_TEMPLATE.render(word=word)
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
         )
