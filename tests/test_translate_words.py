@@ -7,6 +7,8 @@ from scripts.translate_words import (
     fetch_french_words,
     translate_word,
     generate_image,
+    upload_image_to_airtable,
+    update_word_record,
     AIRTABLE_URL,
 )
 
@@ -31,8 +33,8 @@ class FetchWordsTests(unittest.TestCase):
         resp.raise_for_status.return_value = None
         resp.json.return_value = {
             "records": [
-                {"fields": {"french_word": "bonjour"}},
-                {"fields": {"french_word": "chat"}},
+                {"id": "rec1", "fields": {"french_word": "bonjour"}},
+                {"id": "rec2", "fields": {"french_word": "chat"}},
             ]
         }
         mock_get.return_value = resp
@@ -46,7 +48,7 @@ class FetchWordsTests(unittest.TestCase):
         self.assertEqual(kwargs["headers"], headers)
         params = kwargs["params"]
         self.assertIn("filterByFormula", params)
-        self.assertEqual(result, ["bonjour", "chat"])
+        self.assertEqual(result, [("rec1", "bonjour"), ("rec2", "chat")])
 
 
 class TranslateWordTests(unittest.TestCase):
@@ -105,6 +107,56 @@ class GenerateImageTests(unittest.TestCase):
         mock_client.images.generate.assert_called_once()
         m_open.assert_called_once()
         self.assertTrue(path.endswith("cat.png"))
+
+
+class UploadFunctionsTests(unittest.TestCase):
+    @patch("scripts.translate_words.requests.post")
+    def test_upload_image_to_airtable(self, mock_post):
+        resp = MagicMock()
+        resp.raise_for_status.return_value = None
+        resp.json.return_value = {"id": "att123"}
+        mock_post.return_value = resp
+
+        with patch("builtins.open", new_callable=unittest.mock.mock_open()) as m_open:
+            att_id = upload_image_to_airtable("TOKEN", "/tmp/img.png")
+
+        mock_post.assert_called_once()
+        m_open.assert_called_once_with("/tmp/img.png", "rb")
+        self.assertEqual(att_id, "att123")
+
+    @patch("scripts.translate_words.requests.patch")
+    def test_update_word_record(self, mock_patch):
+        resp = MagicMock()
+        resp.raise_for_status.return_value = None
+        mock_patch.return_value = resp
+
+        data = {
+            "english_word": "cat",
+            "sentence_one": "le chat dort",
+            "sentence_two": "j'aime le chat",
+            "gender": "masculine",
+            "part_of_speech": "noun",
+        }
+
+        update_word_record("TOKEN", "rec1", data, "att1")
+
+        mock_patch.assert_called_once()
+        args, kwargs = mock_patch.call_args
+        self.assertEqual(args[0], f"{AIRTABLE_URL}/rec1")
+        payload = kwargs["json"]
+        self.assertEqual(
+            payload,
+            {
+                "fields": {
+                    "english_word": "cat",
+                    "example_1": "le chat dort",
+                    "example_2": "j'aime le chat",
+                    "gender": "masculine",
+                    "part_of_speech": "noun",
+                    "image": [{"id": "att1"}],
+                }
+            },
+        )
 
 
 if __name__ == "__main__":
