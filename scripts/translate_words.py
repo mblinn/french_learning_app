@@ -8,6 +8,8 @@ import json
 import requests
 import openai
 from jinja2 import Template
+from PIL import Image
+import io
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
 
@@ -200,9 +202,18 @@ def upload_image_to_airtable(api_key: str, image_path: str) -> str:
     """
     headers = {"Authorization": f"Bearer {api_key}"}
     url = "https://api.airtable.com/v0/bases/applW7zbiH23gDDCK/attachments"
-    with open(image_path, "rb") as f:
-        files = {"file": (os.path.basename(image_path), f, "image/png")}
+
+    # Resize the image to 150x150 before uploading. Using a BytesIO buffer avoids
+    # writing an intermediate file to disk, which keeps the function simple and
+    # testable.
+    with Image.open(image_path) as img:
+        resized = img.resize((150, 150))
+        buffer = io.BytesIO()
+        resized.save(buffer, format="PNG")
+        buffer.seek(0)
+        files = {"file": (os.path.basename(image_path), buffer, "image/png")}
         resp = requests.post(url, headers=headers, files=files)
+
     resp.raise_for_status()
     data = resp.json()
     return data.get("id")

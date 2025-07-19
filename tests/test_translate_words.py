@@ -111,17 +111,21 @@ class GenerateImageTests(unittest.TestCase):
 
 class UploadFunctionsTests(unittest.TestCase):
     @patch("scripts.translate_words.requests.post")
-    def test_upload_image_to_airtable(self, mock_post):
+    @patch("scripts.translate_words.Image.open")
+    def test_upload_image_to_airtable(self, mock_open_image, mock_post):
         resp = MagicMock()
         resp.raise_for_status.return_value = None
         resp.json.return_value = {"id": "att123"}
         mock_post.return_value = resp
 
-        with patch("builtins.open", new_callable=unittest.mock.mock_open()) as m_open:
-            att_id = upload_image_to_airtable("TOKEN", "/tmp/img.png")
+        mock_img = MagicMock()
+        mock_open_image.return_value.__enter__.return_value = mock_img
+
+        att_id = upload_image_to_airtable("TOKEN", "/tmp/img.png")
 
         mock_post.assert_called_once()
-        m_open.assert_called_once_with("/tmp/img.png", "rb")
+        mock_open_image.assert_called_once_with("/tmp/img.png")
+        mock_img.resize.assert_called_once_with((150, 150))
         self.assertEqual(att_id, "att123")
 
     @patch("scripts.translate_words.requests.patch")

@@ -3,3 +3,4 @@ requests
 openai>=1.0.0
 pytest
 Jinja2
+Pillow
