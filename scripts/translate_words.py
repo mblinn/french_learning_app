@@ -249,7 +249,7 @@ def main(argv: List[str] | None = None) -> int:
     environment variables for credentials.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("freq-range", help="Frequency range in the form start-end")
+    parser.add_argument("--freq-range", help="Frequency range in the form start-end")
     parser.add_argument(
         "--upload-data",
         action="store_true",
