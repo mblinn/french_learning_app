@@ -14,12 +14,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Flashcard:
-    """Container for a single flashcard."""
+    """Container for a single flashcard loaded from Airtable."""
 
     front: str
     back: str
     frequency: str | None = None
     level: str | None = None
+    gender: str | None = None
+    part_of_speech: str | None = None
+    example_1: str | None = None
+    example_2: str | None = None
 
 def build_url(base_url: str, params: Optional[dict] = None) -> str:
     """Return ``base_url`` with ``params`` encoded as query string."""
@@ -138,6 +142,10 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
             front = fields.get("french_word", "")
             back = fields.get("english_translation", {}).get("value", "")
             freq_raw = fields.get("Frequency", "")
+            gender = fields.get("gender")
+            part_of_speech = fields.get("part_of_speech")
+            example_1 = fields.get("example_1")
+            example_2 = fields.get("example_2")
             # ``Frequency`` may come back as an int or float from Airtable.
             freq_str = str(freq_raw)
             try:
@@ -147,7 +155,16 @@ def fetch_flashcards(api_key: str) -> List[Flashcard]:
             level = str(spaced_map.get(freq_int, 1)) if freq_int is not None else "1"
             if front or back:
                 flashcards.append(
-                    Flashcard(front=front, back=back, frequency=freq_str, level=level)
+                    Flashcard(
+                        front=front,
+                        back=back,
+                        frequency=freq_str,
+                        level=level,
+                        gender=gender,
+                        part_of_speech=part_of_speech,
+                        example_1=example_1,
+                        example_2=example_2,
+                    )
                 )
         logger.info(
             "Returning flashcards with levels: %s",

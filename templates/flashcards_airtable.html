@@ -155,7 +155,12 @@
             <div class="level-badge" style="background: {{ color }};">{{ lvl }}</div>
             <div class="side front">
                 <div class="level-banner" style="background: {{ color }};"></div>
-                {{ card.front }}
+                <div>{{ card.front }}</div>
+                <div style="font-size: 12pt; text-align: center;">
+                    <div>{{ card.gender }} {{ card.part_of_speech }}</div>
+                    <div>{{ card.example_1 }}</div>
+                    <div>{{ card.example_2 }}</div>
+                </div>
             </div>
             <div class="side back">
                 <div class="level-banner" style="background: {{ color }};"></div>
