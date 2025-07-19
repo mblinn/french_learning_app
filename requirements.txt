@@ -1,5 +1,5 @@
 Flask
 requests
-openai
+openai>=1.0.0
 pytest
 Jinja2

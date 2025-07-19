@@ -1,1 +1,10 @@
-Translate the French word '{{ word }}' into English. Respond only with the English translation. If the word cannot be translated directly, respond with 'N/A'.
+Translate the French word '{{ word }}' into English and return a JSON object with the following keys:
+
+- ``english_word`` - the English translation
+- ``french_word`` - the original French word prefixed by the correct article (le, la or l')
+- ``sentence_one`` - a French example sentence of less than 7 words using the word
+- ``sentence_two`` - another short French sentence of less than 7 words using the word
+- ``part_of_speech`` - the part of speech
+- ``gender`` - ``masculine`` or ``feminine`` if applicable, otherwise ``N/A``
+
+Respond only with valid JSON.

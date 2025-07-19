@@ -1,4 +1,5 @@
 import unittest
+import json
 from unittest.mock import patch, MagicMock
 
 from scripts.translate_words import (
@@ -55,29 +56,40 @@ class TranslateWordTests(unittest.TestCase):
         mock_client = MagicMock()
         mock_openai.return_value = mock_client
         mock_completion = MagicMock()
-        mock_completion.choices = [MagicMock(message=MagicMock(content="bonjour"))]
+        response_json = {
+            "english_word": "hello",
+            "french_word": "bonjour",
+            "sentence_one": "bonjour le monde",
+            "sentence_two": "bonjour les amis",
+            "part_of_speech": "noun",
+            "gender": "N/A",
+        }
+        mock_completion.choices = [
+            MagicMock(message=MagicMock(content=json.dumps(response_json)))
+        ]
         mock_client.chat.completions.create.return_value = mock_completion
 
         result = translate_word("OPENAI", "hello")
 
         mock_openai.assert_called_once_with(api_key="OPENAI")
         mock_client.chat.completions.create.assert_called_once()
-        self.assertEqual(result, "bonjour")
+        self.assertEqual(result, response_json)
 
 
 class GenerateImageTests(unittest.TestCase):
     @patch("scripts.translate_words.openai.OpenAI")
-    @patch("scripts.translate_words.openai.Image.create")
     @patch("scripts.translate_words.requests.get")
-    @patch("scripts.translate_words.os.makedirs")
-    def test_generate_image(self, mock_makedirs, mock_get, mock_create, mock_openai):
-        mock_create.return_value = {"data": [{"url": "http://example.com/img.png"}]}
-
+    def test_generate_image(self, mock_get, mock_openai):
         mock_client = MagicMock()
         mock_openai.return_value = mock_client
+
         completion = MagicMock()
         completion.choices = [MagicMock(message=MagicMock(content="prompt"))]
         mock_client.chat.completions.create.return_value = completion
+
+        mock_client.images.generate.return_value = MagicMock(
+            data=[MagicMock(url="http://example.com/img.png")]
+        )
 
         img_resp = MagicMock()
         img_resp.raise_for_status.return_value = None
@@ -87,11 +99,10 @@ class GenerateImageTests(unittest.TestCase):
         with patch("builtins.open", new_callable=unittest.mock.mock_open()) as m_open:
             path = generate_image("OPENAI", "cat")
 
-        mock_create.assert_called_once()
         mock_get.assert_called_once_with("http://example.com/img.png")
-        mock_makedirs.assert_called_once()
-        mock_openai.assert_called_once_with(api_key="OPENAI")
+        mock_openai.assert_any_call(api_key="OPENAI")
         mock_client.chat.completions.create.assert_called_once()
+        mock_client.images.generate.assert_called_once()
         m_open.assert_called_once()
         self.assertTrue(path.endswith("cat.png"))
 
