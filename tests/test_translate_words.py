@@ -112,7 +112,8 @@ class GenerateImageTests(unittest.TestCase):
 class UploadFunctionsTests(unittest.TestCase):
     @patch("scripts.translate_words.requests.post")
     @patch("scripts.translate_words.Image.open")
-    def test_upload_image_to_airtable(self, mock_open_image, mock_post):
+    @patch("builtins.open", new_callable=unittest.mock.mock_open)
+    def test_upload_image_to_airtable(self, mock_file, mock_open_image, mock_post):
         resp = MagicMock()
         resp.raise_for_status.return_value = None
         resp.json.return_value = {"id": "att123"}

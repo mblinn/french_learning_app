@@ -88,8 +88,67 @@ class FetchFlashcardsTests(unittest.TestCase):
         self.assertEqual(
             cards,
             [
-                Flashcard(front="Bonjour", back="Hello", frequency="2", level="1"),
-                Flashcard(front="", back="Empty", frequency="5", level="1"),
+                Flashcard(
+                    front="Bonjour",
+                    back="Hello",
+                    frequency="2",
+                    level="1",
+                    gender=None,
+                    part_of_speech=None,
+                    example_1=None,
+                    example_2=None,
+                ),
+                Flashcard(
+                    front="",
+                    back="Empty",
+                    frequency="5",
+                    level="1",
+                    gender=None,
+                    part_of_speech=None,
+                    example_1=None,
+                    example_2=None,
+                ),
+            ],
+        )
+
+    @patch("airtable_data_access.get_random_frequencies", return_value=list(range(1, 26)))
+    @patch("airtable_data_access.fetch_spaced_rep_frequencies", return_value=[])
+    @patch("airtable_data_access.requests.get")
+    def test_parses_additional_fields(self, mock_get, mock_spaced, mock_rand):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {
+            "records": [
+                {
+                    "fields": {
+                        "french_word": "Bonjour",
+                        "english_translation": {"value": "Hello"},
+                        "Frequency": "2",
+                        "gender": "masc",
+                        "part_of_speech": "noun",
+                        "example_1": "bonjour le monde",
+                        "example_2": "bonjour les amis",
+                    }
+                }
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        cards = fetch_flashcards("TOKEN")
+
+        self.assertEqual(
+            cards,
+            [
+                Flashcard(
+                    front="Bonjour",
+                    back="Hello",
+                    frequency="2",
+                    level="1",
+                    gender="masc",
+                    part_of_speech="noun",
+                    example_1="bonjour le monde",
+                    example_2="bonjour les amis",
+                )
             ],
         )
 
@@ -121,7 +180,19 @@ class FetchFlashcardsTests(unittest.TestCase):
         cards = fetch_flashcards("TOKEN")
 
         self.assertEqual(
-            cards, [Flashcard(front="Savoir", back="to know", frequency="7", level="1")]
+            cards,
+            [
+                Flashcard(
+                    front="Savoir",
+                    back="to know",
+                    frequency="7",
+                    level="1",
+                    gender=None,
+                    part_of_speech=None,
+                    example_1=None,
+                    example_2=None,
+                )
+            ],
         )
 
     @patch(
@@ -149,7 +220,18 @@ class FetchFlashcardsTests(unittest.TestCase):
 
         self.assertEqual(
             cards,
-            [Flashcard(front="Bonjour", back="Hello", frequency="2", level="3")],
+            [
+                Flashcard(
+                    front="Bonjour",
+                    back="Hello",
+                    frequency="2",
+                    level="3",
+                    gender=None,
+                    part_of_speech=None,
+                    example_1=None,
+                    example_2=None,
+                )
+            ],
         )
 
     @patch(
@@ -177,7 +259,18 @@ class FetchFlashcardsTests(unittest.TestCase):
 
         self.assertEqual(
             cards,
-            [Flashcard(front="Bonjour", back="Hello", frequency="2.0", level="1")],
+            [
+                Flashcard(
+                    front="Bonjour",
+                    back="Hello",
+                    frequency="2.0",
+                    level="1",
+                    gender=None,
+                    part_of_speech=None,
+                    example_1=None,
+                    example_2=None,
+                )
+            ],
         )
 
     @patch(
@@ -205,7 +298,18 @@ class FetchFlashcardsTests(unittest.TestCase):
 
         self.assertEqual(
             cards,
-            [Flashcard(front="Bonjour", back="Hello", frequency="2.0", level="4")],
+            [
+                Flashcard(
+                    front="Bonjour",
+                    back="Hello",
+                    frequency="2.0",
+                    level="4",
+                    gender=None,
+                    part_of_speech=None,
+                    example_1=None,
+                    example_2=None,
+                )
+            ],
         )
 
     @patch("airtable_data_access.requests.post")
