@@ -4,12 +4,12 @@ import logging
 from typing import List, Optional, Tuple
 import os
 import json
-
 import requests
 import openai
 from jinja2 import Template
 from PIL import Image
 import io
+import base64
 
 AIRTABLE_URL = "https://api.airtable.com/v0/applW7zbiH23gDDCK/french_words"
 
@@ -200,31 +200,41 @@ def upload_image_to_airtable(api_key: str, image_path: str) -> str:
     str
         The attachment ID returned by Airtable.
     """
-    headers = {"Authorization": f"Bearer {api_key}"}
-
-    # Resize the image to 150x150 before uploading. Using a BytesIO buffer avoids
-    # writing an intermediate file to disk, which keeps the function simple and
-    # testable.
+    # Resize the image to 150x150 before uploading
     with Image.open(image_path) as img:
         resized = img.resize((150, 150))
         buffer = io.BytesIO()
         resized.save(buffer, format="PNG")
         buffer.seek(0)
-        files = {"file": (os.path.basename(image_path), buffer, "image/png")}
-    
-    # Use the correct Airtable attachments endpoint
-    url = "https://api.airtable.com/v0/bases/applW7zbiH23gDDCK/attachments"
-    with open(image_path, "rb") as f:
-        files = {"file": (os.path.basename(image_path), f, "image/png")}
-        resp = requests.post(url, headers=headers, files=files)
-
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("id")
+        
+        # Convert image to Base64
+        img_data = buffer.getvalue()
+        base64_img = base64.b64encode(img_data).decode('utf-8')
+        
+        # Use the official Airtable API endpoint
+        url = "https://content.airtable.com/v0/applW7zbiH23gDDCK/french_words/image/uploadAttachment"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # Create the JSON payload
+        payload = {
+            "contentType": "image/png",
+            "file": base64_img,
+            "filename": os.path.basename(image_path)
+        }
+        
+        # Make the request
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        
+        # Return the attachment ID
+        return response.json()["id"]
 
 
 def update_word_record(
-    api_key: str, record_id: str, translation: dict, attachment_id: str | None
+    api_key: str, record_id: str, translation: dict
 ) -> None:
     """Update ``record_id`` in Airtable with ``translation`` and ``attachment_id``.
 
@@ -240,8 +250,6 @@ def update_word_record(
         "gender": translation.get("gender"),
         "part_of_speech": translation.get("part_of_speech"),
     }
-    if attachment_id:
-        fields["image"] = [{"id": attachment_id}]
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     url = f"{AIRTABLE_URL}/{record_id}"
@@ -292,9 +300,13 @@ def main(argv: List[str] | None = None) -> int:
     # Fetch range of words from Airtable and translate each
     try:
         french_words = fetch_french_words(airtable_key, start, end)
-        translations = [
-            (rec_id, translate_word(openai_key, word)) for rec_id, word in french_words
-        ]
+        translations = []
+        for rec_id, french_word in french_words:
+            try:
+                translated_data = translate_word(openai_key, french_word)
+                translations.append((rec_id, translated_data))
+            except Exception as exc:
+                print(f"Couldn't translate: {french_word}, skipping... Exception\n{exc}")
     except Exception as exc:
         print(f"Error fetching words: {exc}", file=sys.stderr)
         return 1
@@ -302,11 +314,10 @@ def main(argv: List[str] | None = None) -> int:
     # Print the translation information and then generate images
     for rec_id, data in translations:
         print(json.dumps(data, indent=2, ensure_ascii=False))
-        image_path = generate_image(openai_key, data["english_word"])
+
         if args.upload_data:
             try:
-                attachment_id = upload_image_to_airtable(airtable_key, image_path)
-                update_word_record(airtable_key, rec_id, data, attachment_id)
+                update_word_record(airtable_key, rec_id, data)
             except Exception as exc:
                 logger.error(
                     "Error uploading data for record %s: %s", rec_id, str(exc), exc_info=True
