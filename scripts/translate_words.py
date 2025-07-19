@@ -60,6 +60,13 @@ def fetch_french_words(api_key: str, start: int, end: int) -> List[str]:
     Returns a list of words ordered by frequency. Any records without a
     ``french_word`` field are ignored.
     """
+    if not api_key:
+        raise ValueError("API key is required")
+    """Fetch French words whose frequency is between ``start`` and ``end``.
+
+    Returns a list of words ordered by frequency. Any records without a
+    ``french_word`` field are ignored.
+    """
     headers = {"Authorization": f"Bearer {api_key}"}
     formula = f"AND({{Frequency}} >= {start}, {{Frequency}} <= {end})"
     params = {
@@ -86,7 +93,10 @@ def fetch_french_words(api_key: str, start: int, end: int) -> List[str]:
 
 
 def translate_word(api_key: str, word: str) -> str:
-    """Translate ``word`` from English to French using GPT-4."""
+    """Translate ``word`` from French to English using GPT-4."""
+    if not api_key:
+        raise ValueError("API key is required")
+    """Translate ``word`` from French to English using GPT-4."""
     try:
         client = openai.OpenAI(api_key=api_key)
         prompt = TRANSLATE_PROMPT_TEMPLATE.render(word=word)
@@ -101,6 +111,9 @@ def translate_word(api_key: str, word: str) -> str:
 
 
 def build_image_prompt(api_key: str, word: str) -> str:
+    """Return a GPT-4 generated image prompt for ``word``."""
+    if not api_key:
+        raise ValueError("API key is required")
     """Return a GPT-4 generated image prompt for ``word``."""
     try:
         client = openai.OpenAI(api_key=api_key)
@@ -123,28 +136,31 @@ def generate_image(api_key: str, english_word: str, image_dir: str = IMAGE_DIR) 
     downloaded and written to ``image_dir``. The path to the saved image is
     returned.
     """
+    if not api_key:
+        raise ValueError("API key is required")
+        
     prompt = build_image_prompt(api_key, english_word)
 
     try:
-        response = openai.Image.create(
-            prompt=prompt,
-            n=1,
-            size="1024x1024",
+        client = openai.OpenAI(api_key=api_key)
+        response = client.images.generate(
             model="dall-e-3",
+            prompt=prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1,
         )
-        image_url = response["data"][0]["url"]
-
+        image_url = response.data[0].url
         img_resp = requests.get(image_url)
         img_resp.raise_for_status()
 
-        os.makedirs(image_dir, exist_ok=True)
         file_name = f"{english_word.replace(' ', '_')}.png"
         file_path = os.path.join(image_dir, file_name)
         with open(file_path, "wb") as f:
             f.write(img_resp.content)
         return file_path
-    except Exception:
-        logger.error("Error generating image for '%s'", english_word, exc_info=True)
+    except Exception as exc:
+        logger.error("Error generating image for '%s': %s", english_word, str(exc))
         raise
 
 
@@ -153,56 +169,44 @@ def main(argv: List[str] | None = None) -> int:
 
     Examples
     --------
-    Basic usage with explicit module execution::
+    Basic usage::
 
-        python -m scripts.translate_words 1-20 MY_API_KEY
+        python -m scripts.translate_words freq_range = 1-20
 
-    Or run the script directly from the project root::
-
-        ./scripts/translate_words.py --freq_range=50-100 --api_key==MY_API_KEY
+    The script will use environment variables OPENAI_KEY and AIRTABLE_API_KEY.
     """
-    parser = argparse.ArgumentParser(description="Fetch French words from Airtable")
-    parser.add_argument("--freq_range", help="frequency range, e.g. 1-20")
-    parser.add_argument("--api_key", help="Airtable API key")
-    parser.add_argument(
-        "--translate",
-        action="store_true",
-        help="translate fetched words using OpenAI",
-    )
-    parser.add_argument(
-        "--generate_image",
-        action="store_true",
-        help="generate an illustrative image for each word using OpenAI",
-    )
-    parser.add_argument("--open_ai_api_key", help="OpenAI API key", default=None)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("freq_range", help="Frequency range in the form start-end")
     args = parser.parse_args(argv)
 
-    start, end = parse_frequency_range(args.freq_range)
-    french_words = fetch_french_words(args.api_key, start, end)
+    try:
+        start, end = parse_frequency_range(args.freq_range)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
 
-    need_openai = args.translate or args.generate_image
-    if need_openai and not args.open_ai_api_key:
-        parser.error("--open_ai_api_key is required when --translate or --generate_image is set")
+    # Get API keys from environment variables
+    openai_key = os.getenv("OPENAI_KEY")
+    airtable_key = os.getenv("AIRTABLE_API_KEY")
 
-    if need_openai:
-        translations = [
-            (french_word, translate_word(args.open_ai_api_key, french_word))
-            for french_word in french_words
-        ]
-    else:
-        translations = [(french_word, None) for french_word in french_words]
+    if not openai_key:
+        print("Error: OPENAI_KEY environment variable is not set", file=sys.stderr)
+        return 1
+    if not airtable_key:
+        print("Error: AIRTABLE_API_KEY environment variable is not set", file=sys.stderr)
+        return 1
 
-    if args.translate:
-        for french_word, english_word in translations:
-            print(f"French: {french_word} -- English: {english_word}")
-    else:
-        for french_word, _ in translations:
-            print(french_word)
+    # Fetch range of words from airtable base and translate each
+    try:
+        french_words = fetch_french_words(airtable_key, start, end)
+        translations = [(translate_word(openai_key, french_word), french_word) for french_word in french_words]
+    except Exception as exc:
+        print(f"Error fetching words: {exc}", file=sys.stderr)
+        return 1
 
-    if args.generate_image:
-        for _, english_word in translations:
-            if english_word:
-                generate_image(args.open_ai_api_key, english_word)
+    # Generate images for each English word
+    for _, english_word in translations:
+        generate_image(openai_key, english_word)
 
     return 0
 
