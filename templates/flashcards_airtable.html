@@ -116,6 +116,9 @@
             color: #333;
             cursor: default;
         }
+        .example-sentence {
+            margin-top: 10px;
+        }
         nav {
             margin-top: 20px;
         }
@@ -164,8 +167,8 @@
                             {{ card.part_of_speech or '' }}
                         {% endif %}
                     </div>
-                    <div>{{ card.example_1 }}</div>
-                    <div>{{ card.example_2 }}</div>
+                    <div class="example-sentence">{{ card.example_1 }}</div>
+                    <div class="example-sentence">{{ card.example_2 }}</div>
                 </div>
             </div>
             <div class="side back">
